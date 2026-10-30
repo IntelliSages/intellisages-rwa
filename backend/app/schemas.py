@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -86,8 +87,6 @@ class AliasCreate(StrictModel):
     is_verified: bool = False
 class AliasRead(AliasCreate):
     id: str
-
-from datetime import date
 
 class SupplyGroupCreate(StrictModel):
     canonical_key: str = Field(min_length=2, max_length=160, pattern=r"^[a-z0-9][a-z0-9._:-]*$")

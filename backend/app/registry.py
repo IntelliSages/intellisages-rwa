@@ -1,7 +1,7 @@
 import re
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app import models, schemas
@@ -147,3 +147,36 @@ def get_entity(entity_type: str, entity_id: str, db: Session = Depends(get_db)):
         if hasattr(entity, field):
             result[field] = getattr(entity, field)
     return result
+
+@router.post("/supply-groups", response_model=schemas.SupplyGroupRead, status_code=201)
+def create_supply_group(payload: schemas.SupplyGroupCreate, db: Session = Depends(get_db)):
+    return _create(db, models.EconomicSupplyGroup, payload)
+
+@router.get("/supply-groups", response_model=list[schemas.SupplyGroupRead])
+def list_supply_groups(db: Session = Depends(get_db)):
+    return _list(db, models.EconomicSupplyGroup)
+
+@router.post("/supply-memberships", response_model=schemas.SupplyMembershipRead, status_code=201)
+def create_supply_membership(payload: schemas.SupplyMembershipCreate, db: Session = Depends(get_db)):
+    _require(db, models.EconomicSupplyGroup, payload.group_id, "Economic supply group")
+    _require(db, models.IssuerProduct, payload.issuer_product_id, "Issuer product")
+    return _create(db, models.EconomicSupplyMembership, payload)
+
+@router.get("/supply-memberships", response_model=list[schemas.SupplyMembershipRead])
+def list_supply_memberships(db: Session = Depends(get_db)):
+    return _list(db, models.EconomicSupplyMembership)
+
+@router.post("/classifications", response_model=schemas.ClassificationRead, status_code=201)
+def create_classification(payload: schemas.ClassificationCreate, db: Session = Depends(get_db)):
+    target_model = {"underlying": models.UnderlyingAsset, "issuer_product": models.IssuerProduct}[payload.entity_type]
+    _require(db, target_model, payload.entity_id, payload.entity_type)
+    return _create(db, models.ProductClassification, payload)
+
+@router.get("/classifications", response_model=list[schemas.ClassificationRead])
+def list_classifications(entity_type: str | None = Query(default=None), entity_id: str | None = Query(default=None), db: Session = Depends(get_db)):
+    query = select(models.ProductClassification)
+    if entity_type:
+        query = query.where(models.ProductClassification.entity_type == entity_type)
+    if entity_id:
+        query = query.where(models.ProductClassification.entity_id == entity_id)
+    return db.scalars(query.order_by(models.ProductClassification.effective_from)).all()

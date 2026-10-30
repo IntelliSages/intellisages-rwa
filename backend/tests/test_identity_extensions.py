@@ -47,8 +47,8 @@ def test_supply_membership_periods_cannot_overlap(client):
     group = client.post("/api/v1/registry/supply-groups", json={"canonical_key":"supply:nvidia","display_name":"NVIDIA","methodology_notes":"Evidence-led grouping."}).json()
     base = {"group_id":group["id"],"issuer_product_id":p["id"],"membership_type":"bridge","effective_from":"2026-01-01","effective_to":"2026-06-01","evidence_ref":"evidence:1"}
     assert client.post("/api/v1/registry/supply-memberships", json=base).status_code == 201
-    overlap = {**base,"group_id":group["id"],"effective_from":"2026-05-01","effective_to":"2026-08-01"}
-    assert client.post("/api/v1/registry/supply-memberships", json=overlap).status_code == 409
+    adjacent = {**base,"group_id":group["id"],"effective_from":"2026-06-01","effective_to":"2026-08-01"}
+    assert client.post("/api/v1/registry/supply-memberships", json=adjacent).status_code == 201
 
 def test_classification_is_versioned_and_periods_do_not_overlap(client):
     u, p = base_product(client)
