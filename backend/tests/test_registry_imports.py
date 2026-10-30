@@ -136,7 +136,6 @@ def test_import_routes_require_admin_token(client):
     assert TestClient(app).get("/api/v1/registry/imports").status_code == 401
 
 
-import pytest
 
 
 @pytest.fixture()
