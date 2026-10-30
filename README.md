@@ -19,6 +19,7 @@ RWAs Intelligence connects asset discovery, issuer products, blockchain deployme
 | [docs/BASELINE_AUDIT.md](docs/BASELINE_AUDIT.md) | Repository and supplied prototype baseline; known gaps |
 | [docs/FRONTEND_SPEC.md](docs/FRONTEND_SPEC.md) | Screen inventory, interaction rules and UI states |
 | [docs/DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) | Shared metric meanings, units, formulas and availability rules |
+| [docs/SCREEN_METRIC_INVENTORY.md](docs/SCREEN_METRIC_INVENTORY.md) | Screen-by-screen field inventory and removed/deferred reconciliation |
 | [docs/DATA_IDENTITY_AND_AGGREGATION.md](docs/DATA_IDENTITY_AND_AGGREGATION.md) | Canonical identity, classification, supply, volume and deduplication |
 | [docs/PROVIDER_ENDPOINT_REGISTRY.md](docs/PROVIDER_ENDPOINT_REGISTRY.md) | Provider routes, retained evidence, access and remaining validation |
 | [docs/API_CONTRACTS.md](docs/API_CONTRACTS.md) | Proposed internal read APIs and typed response contracts |
