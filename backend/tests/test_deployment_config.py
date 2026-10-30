@@ -34,6 +34,59 @@ def test_alembic_version_column_widening_is_postgres_only():
     engine.dispose()
 
 
+
+def test_alembic_version_column_widening_alters_and_verifies_postgres():
+    class Result:
+        def scalar_one_or_none(self):
+            return 128
+
+    class PostgreSQLConnection:
+        class Dialect:
+            name = "postgresql"
+
+        dialect = Dialect()
+
+        def __init__(self):
+            self.statements = []
+            self.committed = False
+
+        def exec_driver_sql(self, statement):
+            self.statements.append(statement)
+            return Result()
+
+        def commit(self):
+            self.committed = True
+
+    connection = PostgreSQLConnection()
+    assert ensure_alembic_version_column_length(connection) is True
+    assert "ALTER TABLE IF EXISTS alembic_version" in connection.statements[0]
+    assert "VARCHAR(128)" in connection.statements[0]
+    assert connection.committed is True
+
+
+def test_alembic_version_column_widening_fails_if_postgres_width_is_still_short():
+    class Result:
+        def scalar_one_or_none(self):
+            return 32
+
+    class PostgreSQLConnection:
+        class Dialect:
+            name = "postgresql"
+
+        dialect = Dialect()
+
+        def exec_driver_sql(self, statement):
+            return Result()
+
+        def commit(self):
+            pass
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="expected VARCHAR\\(128\\)"):
+        ensure_alembic_version_column_length(PostgreSQLConnection())
+
+
 def test_healthcheck_requires_database_connectivity(monkeypatch):
     engine = create_engine("sqlite://")
     monkeypatch.setattr(main, "engine", engine)
