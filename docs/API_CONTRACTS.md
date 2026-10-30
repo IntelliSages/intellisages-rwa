@@ -1,6 +1,6 @@
 # Proposed Backend API Contracts
 
-**Status:** logical internal contracts for engineering. These are not deployed routes, generated OpenAPI or tested schemas. Transport, route naming and framework remain subject to repository audit.
+**Status:** most contracts below remain logical proposals, not deployed routes. The tokenized-product catalogue in section 7 is implemented and tested; it does not provide provider ingestion or market observations.
 
 ## 1. Contract principles
 
@@ -164,3 +164,23 @@ Error responses must not reveal secrets. Retain last-success state separately; r
 - Verify exact builder/domain scoping.
 - Verify no source credentials in payload/export.
 - Verify unavailable history does not return synthetic points.
+
+## 7. Implemented tokenized-product catalogue read route
+
+**Implementation status:** available in the repository on the Tokenized RWA Screener increment; it is not a provider-ingestion or market-metric API.
+
+`GET /api/v1/catalogue/tokenized-products`
+
+Query: `q`, `issuer_id`, `network_id`, `sort=underlying|issuer|product`, `direction=asc|desc`, `limit=1..100`, `offset`, optional `as_of=YYYY-MM-DD`.
+
+The response returns:
+- distinct issuer-product records joined to their issuer and underlying;
+- only currently effective `rwa` product classifications;
+- classification source, evidence reference and effective period;
+- all recorded product deployments, with an explicit verification flag;
+- issuer and verified-network facets;
+- pagination metadata and an explicit `coverage.status=unknown` disclosure.
+
+The `total` field is the count of matching registry records, not a provider-complete market universe. A network filter matches only verified product-specific deployments. No price, value, volume, liquidity, supply, performance or perpetual-availability observations are returned. Those fields remain unavailable in the UI until a validated observation/read service is implemented.
+
+The Next.js route `/api/catalogue/tokenized-products` proxies to the backend using server-only `RWA_API_BASE_URL`; it does not expose the upstream API base URL to browser JavaScript.

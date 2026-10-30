@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation and canonical identity registry increments PRs #2, #3 and #4 are merged. Perpetual contract migration history is implemented on `feat/perpetual-contract-migration-history`; initial implementation CI passed on commit `8289736fe72924855c16d47be4fd3401d0613355`. Final documentation-commit and PR-triggered CI remain mandatory before review.
+**Status:** PRs #2–#6 are merged. The Home dashboard, Crypto Screener and page-specific workspace layouts are in `main`. Tokenized RWA Screener and the first read-only catalogue API are under implementation on `feat/tokenized-rwa-screener`; final documentation-commit and PR-triggered CI remain mandatory before review.
 
 ## 1. Verified implementation evidence
 
@@ -98,7 +98,7 @@ Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to
 Final implementation commit `626ea47bc3de761a893a06bef73b2c79247c31a3` passed push run `40986565711` and PR run `40986712177`. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. PR #4 is merged at `28ac009c88c9062657a422d01f80e83b91188456`.
 
 
-## 10. Perpetual contract migration history — implementation in progress
+## 10. Perpetual contract migration history — merged in PR #5
 
 Branch: `feat/perpetual-contract-migration-history`.
 
@@ -106,11 +106,11 @@ The current increment adds evidence-bearing migration events with predecessor/su
 
 The event date is a calendar date. Intraday cutover precision, observation-to-contract lineage, contract lifecycle effective periods and source reconciliation remain outside this increment. Migration evidence is required and verification defaults to false.
 
-Initial implementation validation on commit `8289736fe72924855c16d47be4fd3401d0613355`: GitHub Actions push run `40988066268` passed both quality jobs. Backend: Ruff passed, 28 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. The final documentation commit must be revalidated before PR creation.
+PR #5 merged at `10349dec896de876fcb3ffb697345943a5fbefe3`. Final push run `40988240946` and PR run `40988381700` passed; backend Ruff, 28 tests, Alembic upgrade/downgrade and frontend dependency install, ESLint, TypeScript and production build passed.
 
 ## 10. Frontend Sprint 1 — Home and Crypto Screener
 
-A first product-facing frontend increment is being implemented on `feat/frontend-home-crypto-screener`.
+Merged in PR #6 at `b9540bd599f681a31448d1dd0f35390ed8d49dd7`.
 
 Scope:
 - Home includes separate Trending Crypto and Trending Tokenized Assets workspaces alongside headline metric cards, provider coverage, discovery links and the approved 16-page directory.
@@ -122,4 +122,22 @@ This increment does not complete all sixteen detailed page workspaces or connect
 
 ## 11. Product-page workspace design
 
-The current frontend branch also replaces the generic readiness-only route content with page-specific workspace configurations for the remaining approved surfaces. Each page receives its own metric labels, table columns, filter dimensions and interpretation note. Trader Intelligence and Event Feed remain explicitly reserved; their metrics are not activated before their specifications are approved. All data tables remain empty/unavailable until supported read APIs provide validated records.
+PR #6 also replaced the generic readiness-only route content with page-specific workspace configurations for the remaining approved surfaces. Each page receives its own metric labels, table columns, filter dimensions and interpretation note. Trader Intelligence and Event Feed remain explicitly reserved; their metrics are not activated before their specifications are approved. All data tables remain empty/unavailable until supported read APIs provide validated records.
+
+## 12. Tokenized RWA Screener and catalogue read API
+
+Implementation branch: `feat/tokenized-rwa-screener`.
+
+This increment adds a dedicated Tokenized RWA Screener page, shared availability/provenance components, a same-origin Next.js API proxy, and a read-only FastAPI catalogue endpoint. The endpoint returns effective RWA-classified registry products once each, joins underlying and issuer identity, exposes classification evidence, lists product-level deployment records and applies network filters only to verified deployments. Registry counts are explicitly not represented as provider-complete universe coverage. Market metrics remain unavailable because no validated observations are connected.
+
+Frontend automated tests cover shared status/provenance disclosures, product identity display, deployment expansion, verified-network filter requests and API-not-configured state. Backend tests cover product distinctness, effective classification, verified-network filtering, search, facets, pagination and input validation. Implementation commit `00cf89fb6ca9e3e330eeb2bd74efad09a25f4691` passed push workflow `40991605769`: backend Ruff, 33 pytest tests and Alembic upgrade/downgrade passed; frontend dependency install, ESLint, TypeScript, 7 Vitest tests and Next.js production build passed. The final documentation commit and PR-triggered workflow remain required before review.
+
+
+## 8. Vercel preview deployment and security remediation — 2026-10-30
+
+- Created the dedicated Vercel project `intellisages-rwa` in the `apostleoffinance's projects` workspace and targeted the `IntelliSages/intellisages-rwa` repository.
+- First preview build was blocked by Vercel because Next.js `15.5.6` was flagged as vulnerable (CVE-2025-66478). The deployment was not exposed as a successful preview.
+- Updated the frontend runtime to Next.js `15.5.28`, React/React DOM `19.1.10`, and Sharp `0.35.5`; aligned `eslint-config-next` to `15.5.28`. Added a PostCSS override to `8.5.32` and updated Vitest to `4.1.12` to clear dependency audit findings.
+- Updated Vitest JSX transformation to the current Oxc configuration and removed existing unused-import / anonymous-export lint warnings.
+- Local sandbox validation after remediation: 7 frontend tests passed; ESLint passed; TypeScript passed; Next.js production build passed; `npm audit --audit-level=low` reported 0 vulnerabilities.
+- Vercel and GitHub Actions are configured to use Node.js 24.x because npm 10 on Node 22 failed dependency-tree construction (`Cannot read properties of null (reading 'edgesOut')`); npm 11 on Node 24 generated the lockfile and completed dependency audit successfully.\n- The remediation is committed to the Tokenized RWA Screener PR branch. A fresh Vercel preview must still complete successfully before a preview URL is treated as ready. Production deployment remains out of scope.

@@ -39,7 +39,7 @@ A page may remain visible with specific metrics unavailable or restricted. See t
 
 ## Current status
 
-Documentation defines the intended product and implementation process; it does not prove production implementation, live collectors, complete universe coverage, provider entitlement or passing integration tests. See PROGRESS.md and VALIDATION_MATRIX.md.
+PR #6 has delivered the first frontend shell and page-layout pass. The Tokenized RWA Screener and read-only catalogue API are the current implementation increment. No live market observations, provider-complete universe, production provider entitlements or shared deployment are asserted. See PROGRESS.md and VALIDATION_MATRIX.md.
 
 ## Engineering approach
 
@@ -54,3 +54,34 @@ Documentation defines the intended product and implementation process; it does n
 ## Working agreement
 
 Classify every new statement as **approved product decision**, **retained source evidence**, **proposal**, **unverified assumption**, **deferred scope** or **implementation result**. Update related documents together and keep the progress log honest.
+
+## Run the frontend locally
+
+The Next.js frontend can run independently of the API. From the repository root:
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. Without an API connection, the Tokenized RWA Screener displays an explicit API-not-configured state; it does not load sample market data.
+
+To run the local catalogue API, open a second terminal:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements-dev.txt
+cd backend
+export DATABASE_URL='sqlite:///./local.db'
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+In the frontend terminal, set the server-only API URL before starting Next.js:
+
+```bash
+RWA_API_BASE_URL=http://127.0.0.1:8000 npm run dev
+```
+
+The same variable can be placed in `.env.local` (copy `.env.example`). The browser calls a same-origin Next.js proxy; the backend URL is not exposed as a public client-side environment variable. The API currently serves registered identity/classification records only. It does not ingest market observations or prove provider-universe completeness.
