@@ -1,10 +1,11 @@
+import pytest
+from alembic.ddl.impl import DefaultImpl
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.testclient import TestClient
 
 from app import main
-from alembic.ddl.impl import DefaultImpl
-from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from app.alembic_impl import ExtendedPostgresqlImpl
 
 
