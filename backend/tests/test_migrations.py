@@ -154,3 +154,64 @@ def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monk
             text("SELECT name FROM sqlite_master WHERE type='table'")).all()}
         assert "provider_ingestion_runs" not in after
     engine.dispose()
+
+
+
+def test_postgres_fresh_database_uses_extended_alembic_version_table(tmp_path, monkeypatch):
+    import os
+
+    import pytest
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+
+    from app.database import ALEMBIC_VERSION_NUM_LENGTH
+    from migrations.env import ExtendedVersionTableImpl
+
+    database_url = os.getenv("TEST_POSTGRES_URL")
+    if not database_url:
+        pytest.skip("TEST_POSTGRES_URL is not configured")
+
+    url = make_url(database_url)
+    database_name = f"rwa_migration_{uuid.uuid4().hex[:10]}"
+    admin_url = url.set(database= "postgres")
+    app_url = url.set(database=database_name)
+    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+    app_engine = None
+
+    try:
+        with admin_engine.connect() as connection:
+            connection.exec_driver_sql(f'CREATE DATABASE "{database_name}"')
+
+        app_engine = create_engine(app_url)
+        config = Config("alembic.ini")
+        monkeypatch.setenv("DATABASE_URL", str(app_url))
+
+        command.upgrade(config, "head")
+
+        with app_engine.connect() as connection:
+            width = connection.execute(
+                text(
+                    """
+                    SELECT character_maximum_length
+                    FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = 'alembic_version'
+                      AND column_name = 'version_num'
+                    """
+                )
+            ).scalar_one()
+            revision = connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar_one()
+            assert width == ALEMBIC_VERSION_NUM_LENGTH
+            assert revision == "0006_provider_ingestion_runs"
+
+        command.downgrade(config, "base")
+    finally:
+        if app_engine is not None:
+            app_engine.dispose()
+        with admin_engine.connect() as connection:
+            connection.exec_driver_sql(
+                f' DROP DATABASE IF EXISTS "{database_name}" WITH (FORCE)'
+            )
+        admin_engine.dispose()
