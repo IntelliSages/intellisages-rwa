@@ -16,7 +16,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode, urljoin
+from urllib.parse import quote, urlencode, urljoin, urlsplit
 from urllib.request import Request, urlopen
 
 PROVIDER = "coingecko"
@@ -109,6 +109,9 @@ class CoinGeckoClient:
         self.base_url = (base_url or os.getenv(
             "COINGECKO_BASE_URL", "https://api.coingecko.com/api/v3"
         )).rstrip("/") + "/"
+        parsed_base = urlsplit(self.base_url)
+        if parsed_base.scheme != "https" or parsed_base.query or parsed_base.fragment or parsed_base.username or parsed_base.password:
+            raise RuntimeError("COINGECKO_BASE_URL must be an HTTPS base URL without embedded credentials or query parameters; pass the key only through COINGECKO_API_KEY.")
         self.min_interval = max(0.0, min_interval)
         self.timeout = timeout
         self.max_retries = max(0, max_retries)

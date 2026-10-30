@@ -318,3 +318,14 @@ def test_foundation_normalization_bounds_registry_fields_and_reports_invalid_ids
     assert len(underlying["payload"]["canonical_payload"]["display_name"]) == 240
     assert len(issuer["payload"]["canonical_payload"]["legal_name"]) == 240
     assert counters["underlying_id_out_of_range"] == 0
+
+
+
+def test_coingecko_base_url_rejects_embedded_credentials_and_query_keys():
+    import pytest
+    from app.providers.coingecko_pilot import CoinGeckoClient
+
+    with pytest.raises(RuntimeError, match="without embedded credentials"):
+        CoinGeckoClient(api_key="do-not-leak", base_url="https://api.coingecko.com/api/v3?key=do-not-leak")
+    with pytest.raises(RuntimeError, match="without embedded credentials"):
+        CoinGeckoClient(api_key="do-not-leak", base_url="https://user:pass@api.coingecko.com/api/v3")
