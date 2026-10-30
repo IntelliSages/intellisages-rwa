@@ -111,7 +111,6 @@ def refresh_coingecko_rwa_market_data(
         list_retrieved = _now()
         list_payload = api.get_json(LIST_PATH)
         list_json = json.dumps(list_payload, sort_keys=True, separators=(",", ":"))
-        listed = _rows(list_payload, LIST_PATH)
         db.add(models.ProviderRawResponse(
             run_id=run.id,
             provider="coingecko",
@@ -120,9 +119,10 @@ def refresh_coingecko_rwa_market_data(
             retrieved_at=list_retrieved,
             response_sha256=hashlib.sha256(list_json.encode("utf-8")).hexdigest(),
             response_json=list_json,
-            record_count=len(listed),
+            record_count=len(list_payload) if isinstance(list_payload, list) else 0,
         ))
         db.commit()
+        listed = _rows(list_payload, LIST_PATH)
         expected_ids = {
             str(item["id"]) for item in listed
             if isinstance(item.get("id"), str) and item["id"].strip()
