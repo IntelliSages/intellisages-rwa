@@ -365,6 +365,38 @@ def test_provider_issuer_name_only_surfaces_weak_candidate(client):
     assert record["status"] == "needs_review"
     assert record["resolved_entity_id"] is None
 
+def test_legacy_coingecko_issuer_label_cannot_become_legal_name(client):
+    batch = stage(client, [row("issuer", "legacy-provider-issuer", {
+        "canonical_payload": {
+            "canonical_key": "coingecko:issuer:legacy-provider-issuer",
+            "legal_name": "CoinGecko provider label"
+        },
+        "source_payload": {"id": "legacy-provider-issuer", "name": "CoinGecko provider label"},
+        "source_metadata": {
+            "provider": "coingecko",
+            "name_semantics": "CoinGecko-reported issuer label; legal identity requires independent review."
+        }
+    }, "issuer_id")], source="coingecko").json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    endpoint = f"/api/v1/registry/imports/records/{record['id']}/decision"
+
+    rejected_as_canonical = client.post(endpoint, json={
+        "action": "create_new", "reviewer": "reviewer",
+        "evidence_ref": "https://issuer.example/legal"
+    })
+    assert rejected_as_canonical.status_code == 422
+    assert client.get("/api/v1/registry/issuers").json() == []
+
+    approved = client.post(endpoint, json={
+        "action": "create_new", "reviewer": "reviewer",
+        "evidence_ref": "https://issuer.example/legal",
+        "note": "Verified legal name independently",
+        "canonical_payload_override": {"legal_name": "Verified Legal Entity Ltd"}
+    })
+    assert approved.status_code == 200
+    assert client.get("/api/v1/registry/issuers").json()[0]["legal_name"] == "Verified Legal Entity Ltd"
+
+
 def test_canonical_payload_override_is_rejected_for_link_existing(client):
     issuer = client.post("/api/v1/registry/issuers", json={
         "canonical_key": "issuer:existing", "legal_name": "Existing Legal Entity"}).json()
