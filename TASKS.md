@@ -228,3 +228,22 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [ ] Merge PR #9 into main.
 - [ ] Configure a production-grade identity provider/role authorization and secret management before enabling shared-environment import access.
 - [ ] Connect an entitled provider source and execute a reviewed pilot import; reconcile actual imported rows and source coverage before declaring data ingestion ready.
+
+
+## SPRINT 5 — CoinGecko provider pilot
+
+- [x] Add a resumable CoinGecko RWA list/detail snapshot client with API-key secret handling and bounded retries.
+- [x] Preserve raw source payloads, endpoint metadata, retrieval timestamps and SHA-256 hashes.
+- [x] Normalize underlyings and provider-reported issuers into staged import records.
+- [x] Add explicit platform-to-network mapping; unknown network slugs stay unresolved.
+- [x] Add phased product and deployment staging that requires active verified parent aliases.
+- [x] Add persistent provider ingestion run and coverage API/migration.
+- [x] Add coverage reporting for provider-list scope, detail failures, issuer IDs, product tokens, platform mappings and review outcomes.
+- [x] Add automated adapter and phased reconciliation tests.
+- [x] Pass Ruff, 68 pytest tests and Alembic upgrade/downgrade on application commit 547daa081d448adb6f5a1730afb63a7accc41ed8; frontend ESLint, TypeScript, Vitest and production build also passed on both push and PR workflows.
+- [ ] Run a full authenticated CoinGecko snapshot using a locally configured API key.
+- [ ] Stage foundations and networks; approve only after source evidence review.
+- [ ] Stage products after approved issuer/underlying mappings; review and approve.
+- [ ] Stage deployments after approved product/network mappings; keep deployment verification false pending evidence.
+- [ ] Complete reconciliation and coverage review; record provider coverage limitations.
+- [ ] Merge the implementation PR after CI and live pilot evidence are reviewed.

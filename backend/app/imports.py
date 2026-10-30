@@ -16,9 +16,9 @@ from app.registry import _normalize_identifier
 
 router = APIRouter(prefix="/api/v1/registry/imports", tags=["registry imports"])
 
-ENTITY_MODELS = {"underlying": models.UnderlyingAsset, "issuer": models.Issuer,
+ENTITY_MODELS = {"underlying": models.UnderlyingAsset, "issuer": models.Issuer, "network": models.Network,
                  "issuer_product": models.IssuerProduct, "deployment": models.Deployment}
-CREATE_SCHEMAS = {"underlying": schemas.UnderlyingCreate, "issuer": schemas.IssuerCreate,
+CREATE_SCHEMAS = {"underlying": schemas.UnderlyingCreate, "issuer": schemas.IssuerCreate, "network": schemas.NetworkCreate,
                   "issuer_product": schemas.ProductCreate, "deployment": schemas.DeploymentCreate}
 
 
@@ -65,6 +65,12 @@ def _candidate(db: Session, record: models.RegistryImportRecord, entity_type: st
             candidate.evidence_ref = evidence_ref
 
 
+def _canonical_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Read canonical fields from a provider envelope while retaining the full source row."""
+    canonical = payload.get("canonical_payload") if isinstance(payload, dict) else None
+    return canonical if isinstance(canonical, dict) else payload
+
+
 def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:
     network = db.get(models.Network, payload.get("network_id"))
     if network is None:
@@ -74,6 +80,7 @@ def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:
 
 def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
                          record: models.RegistryImportRecord, payload: dict[str, Any]):
+    payload = _canonical_payload(payload)
     aliases = db.scalars(select(models.ProviderAlias).where(
         models.ProviderAlias.provider == batch.source,
         models.ProviderAlias.namespace == record.source_namespace,
@@ -97,6 +104,15 @@ def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
         if isinstance(name, str) and name:
             for item in db.scalars(select(model).where(func.lower(getattr(model, field)) == name.lower())).all():
                 _candidate(db, record, record.entity_type, item.id, "exact_name_not_unique_identity", 0.55)
+    elif record.entity_type == "network":
+        namespace = payload.get("namespace")
+        if isinstance(namespace, str) and namespace:
+            for item in db.scalars(select(model).where(model.namespace == namespace)).all():
+                _candidate(db, record, "network", item.id, "exact_network_namespace", 1.0)
+        display_name = payload.get("display_name")
+        if isinstance(display_name, str) and display_name:
+            for item in db.scalars(select(model).where(func.lower(model.display_name) == display_name.lower())).all():
+                _candidate(db, record, "network", item.id, "network_name_not_unique_identity", 0.5)
     elif record.entity_type == "issuer_product":
         key = payload.get("canonical_key")
         if key:
@@ -255,9 +271,11 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
     if record.status != "needs_review":
         raise HTTPException(status_code=409, detail=f"Import record is already {record.status}.")
     batch = db.get(models.RegistryImportBatch, record.batch_id)
-    payload = json.loads(record.raw_payload_json)
+    payload = _canonical_payload(json.loads(record.raw_payload_json))
 
     if decision.action == "reject":
+        if decision.canonical_payload_override is not None:
+            raise HTTPException(status_code=422, detail="Canonical payload overrides are only valid when creating a new entity.")
         if not decision.note:
             raise HTTPException(status_code=422, detail="A rejection note is required.")
         record.status, record.decision_note = "rejected", decision.note
@@ -267,6 +285,8 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
         if not decision.evidence_ref:
             raise HTTPException(status_code=422, detail="Evidence reference is required before approving a mapping.")
         if decision.action == "link_existing":
+            if decision.canonical_payload_override is not None:
+                raise HTTPException(status_code=422, detail="Canonical payload overrides cannot be used when linking an existing entity.")
             if not decision.target_entity_id:
                 raise HTTPException(status_code=422, detail="target_entity_id is required to link an existing entity.")
             target = db.get(ENTITY_MODELS[record.entity_type], decision.target_entity_id)
@@ -275,7 +295,10 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
             target_id, method = target.id, "human_approved_existing_link"
         else:
             try:
-                clean = CREATE_SCHEMAS[record.entity_type].model_validate(payload)
+                create_payload = dict(payload)
+                if decision.canonical_payload_override:
+                    create_payload.update(decision.canonical_payload_override)
+                clean = CREATE_SCHEMAS[record.entity_type].model_validate(create_payload)
             except ValidationError as exc:
                 raise HTTPException(status_code=422, detail={
                     "message": "Imported payload does not satisfy canonical entity requirements.",
@@ -319,7 +342,8 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
         record.reviewed_by, record.reviewed_at = decision.reviewer, _now()
         _audit(db, batch.id, decision.reviewer, "record_approved", {
             "action": decision.action, "entity_type": record.entity_type, "entity_id": target_id,
-            "resolution_method": method, "evidence_ref": decision.evidence_ref}, record.id)
+            "resolution_method": method, "evidence_ref": decision.evidence_ref,
+            "canonical_payload_override": decision.canonical_payload_override or {}}, record.id)
 
     _refresh_batch_status(db, batch)
     try:

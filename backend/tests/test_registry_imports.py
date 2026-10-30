@@ -255,3 +255,99 @@ def test_create_new_product_rejects_unknown_parent_references(client):
         "action": "create_new", "reviewer": "reviewer", "evidence_ref": "evidence:product"})
     assert response.status_code == 404
     assert client.get("/api/v1/registry/products").json() == []
+
+
+
+def test_network_import_envelope_preserves_provider_payload_and_creates_canonical_network(client):
+    batch = stage(client, [row("network", "ethereum", {
+        "canonical_payload": {"namespace": "eip155:1", "display_name": "Ethereum", "family": "evm"},
+        "source_payload": {"platform_slug": "ethereum", "chain_id": "eip155:1"},
+        "source_metadata": {"provider": "coingecko", "mapping_basis": "explicit"}
+    }, "platform_slug")], source="coingecko").json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    assert record["payload"]["source_payload"]["platform_slug"] == "ethereum"
+    approved = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "create_new", "reviewer": "reviewer", "evidence_ref": "https://docs.coingecko.com/reference/rwa-list"})
+    assert approved.status_code == 200
+    networks = client.get("/api/v1/registry/networks").json()
+    assert len(networks) == 1 and networks[0]["namespace"] == "eip155:1"
+    aliases = [a for a in client.get("/api/v1/registry/aliases").json()
+               if a["provider"] == "coingecko" and a["namespace"] == "platform_slug"]
+    assert len(aliases) == 1 and aliases[0]["is_verified"] is True
+
+
+def test_provider_run_coverage_is_persisted_and_completed_runs_are_immutable(client):
+    created = client.post("/api/v1/registry/provider-runs", json={
+        "provider": "coingecko", "dataset": "tokenized-rwa-catalogue",
+        "source_version": "2026-10-30T12:00:00Z", "started_by": "operator",
+        "manifest_sha256": "a" * 64, "coverage": {"provider_rwa_list_count": 647}
+    })
+    assert created.status_code == 201
+    run_id = created.json()["id"]
+    invalid_completion = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "completed", "coverage": {"provider_rwa_list_count": 647}
+    })
+    assert invalid_completion.status_code == 409
+    malformed_completion = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "completed", "coverage": {"all_pipeline_phases_staged": True, "phase_status": None}
+    })
+    assert malformed_completion.status_code == 409
+    complete_coverage = {
+        "provider_rwa_list_count": 647, "details": 647,
+        "all_pipeline_phases_staged": True, "full_provider_list_requested": True,
+        "detail_failure_count": 0, "unsupported_platform_slugs": [],
+        "unresolved_parent_mappings": 0, "review_queue_remaining": 0,
+        "phase_status": {"foundations": "complete", "networks": "complete",
+                         "products": "complete", "deployments": "complete"},
+    }
+    updated = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "completed", "coverage": complete_coverage,
+        "staged_batch_ids": []
+    })
+    assert updated.status_code == 200
+    assert updated.json()["coverage"]["details"] == 647
+    assert client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "partial"
+    }).status_code == 409
+
+
+def test_provider_run_routes_require_admin_token(client):
+    assert TestClient(app).get("/api/v1/registry/provider-runs").status_code == 401
+
+
+
+def test_create_new_allows_audited_canonical_override_for_provider_issuer_label(client):
+    batch = stage(client, [row("issuer", "provider-issuer-1", {
+        "canonical_payload": {"canonical_key": "coingecko:issuer:provider-issuer-1",
+                              "legal_name": "Provider label"},
+        "source_payload": {"id": "provider-issuer-1", "name": "Provider label"},
+        "source_metadata": {"name_semantics": "provider label, not legal identity"}
+    }, "issuer_id")], source="coingecko").json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    approved = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "create_new", "reviewer": "reviewer",
+        "evidence_ref": "https://issuer.example/legal",
+        "note": "Confirmed legal entity name against issuer legal page",
+        "canonical_payload_override": {"legal_name": "Provider Issuer Holdings Ltd"}
+    })
+    assert approved.status_code == 200
+    issuers = client.get("/api/v1/registry/issuers").json()
+    assert issuers[0]["legal_name"] == "Provider Issuer Holdings Ltd"
+    audit = client.get(f"/api/v1/registry/imports/{batch['id']}/audit").json()
+    assert audit[-1]["details"]["canonical_payload_override"]["legal_name"] == "Provider Issuer Holdings Ltd"
+
+
+def test_canonical_payload_override_is_rejected_for_link_existing(client):
+    issuer = client.post("/api/v1/registry/issuers", json={
+        "canonical_key": "issuer:existing", "legal_name": "Existing Legal Entity"}).json()
+    batch = stage(client, [row("issuer", "provider-issuer-2", {
+        "canonical_payload": {"canonical_key": "coingecko:issuer:provider-issuer-2",
+                              "legal_name": "Provider label"}
+    }, "issuer_id")], source="coingecko").json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    response = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "link_existing", "reviewer": "reviewer", "target_entity_id": issuer["id"],
+        "evidence_ref": "https://issuer.example/legal",
+        "canonical_payload_override": {"legal_name": "Another Name"}
+    })
+    assert response.status_code == 422

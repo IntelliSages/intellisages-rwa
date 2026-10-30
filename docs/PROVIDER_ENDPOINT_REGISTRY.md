@@ -98,3 +98,17 @@ These are recovered engineering plans. Confirm provider cache, entitlement, actu
 For every adapter retain provider, exact route/method/query/body, auth requirement, entity/domain/network key, native unit, source/retrieval time, pagination termination, errors, native field map, sample fixture, coverage and licence/export status.
 
 No secret may appear in docs, browser payloads or CSV. Do not bypass provider restrictions. A single failure is not proof that the provider has no data; preserve error scope and retry only within permitted budgets.
+
+
+## 7. CoinGecko RWA discovery adapter — pilot implementation
+
+The current pilot adapter uses:
+- \`GET https://api.coingecko.com/api/v3/rwas/list\` for the provider-tracked RWA underlying list.
+- \`GET /rwas/{id}?tokens=true&tokenized_market_data=true\` for per-underlying token records, issuer details and platform contract/mint mappings.
+- \`GET /rwas/issuers/list\` as an optional issuer-list cross-check.
+
+The official CoinGecko RWA API guide states that a Demo API key is required and that the free Demo plan supports the list/detail discovery workflow. Ticker liquidity and historical market-chart endpoints are not used by this registry importer; those require paid access according to the guide. See https://www.coingecko.com/learn/tokenized-rwa-data-api-guide (updated 26 Oct 2026).
+
+The adapter stores raw provider responses locally with SHA-256 hashes, per-record checkpointing, retry handling and retrieval timestamps. It stages only; it does not approve canonical records. Provider issuer labels are not legal-identity proof. CoinGecko token IDs are provisional provider-native product identifiers, not asserted issuer-internal IDs. Platform-to-CAIP-2 mappings are explicit and unknown platform slugs remain unresolved. Token contract/mint entries are staged as unverified deployments.
+
+Coverage is reported against CoinGecko's tracked RWA list at retrieval time. It must not be described as complete global tokenized-asset coverage.

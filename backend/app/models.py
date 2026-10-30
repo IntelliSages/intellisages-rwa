@@ -222,3 +222,20 @@ class RegistryImportAuditEvent(Base):
     action: Mapped[str] = mapped_column(String(80), index=True)
     details_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ProviderIngestionRun(Base):
+    __tablename__ = "provider_ingestion_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(100), index=True)
+    dataset: Mapped[str] = mapped_column(String(120))
+    source_version: Mapped[str] = mapped_column(String(160))
+    started_by: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(30), default="snapshot_ready", index=True)
+    manifest_sha256: Mapped[str] = mapped_column(String(64))
+    coverage_json: Mapped[str] = mapped_column(Text)
+    staged_batch_ids_json: Mapped[str] = mapped_column(Text, default="[]")
+    error_summary: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

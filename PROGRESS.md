@@ -218,3 +218,34 @@ Validated PR #9 head: `5a9b91ede61b8b5d5197fd3d6cba72ebace9f655`.
 - PR #9 is open and unmerged. Merge remains a product-owner action.
 - The first test run exposed duplicate candidate rows and stale batch status due to disabled SQLAlchemy autoflush. Candidate deduplication now preserves all match signals, and the status/count queries explicitly flush before reading. The final test run covers these cases, alias approval, parent-reference validation, duplicate rows, payload limits, and deployment normalization.
 - The admin import API remains disabled until a server-side `REGISTRY_ADMIN_TOKEN` is configured. The supplied reviewer label is not an authenticated user identity; production use still requires identity-provider integration and role-based authorization.
+
+
+## 19. Sprint 5 — CoinGecko RWA pilot ingestion (implementation branch)
+
+Branch: \`feat/coingecko-rwa-pilot-ingestion\`, based on merged PR #9 commit \`fd8f8ebb49bb8073f42bdb3e6dea14557adbe0e4\`.
+
+Implemented in this increment:
+- CoinGecko RWA snapshot client for \`/rwas/list\`, optional \`/rwas/issuers/list\`, and per-underlying \`/rwas/{id}?tokens=true\`.
+- API-key handling through environment variables only; demo/pro headers selected from the configured base URL. No secret is written to raw snapshots or manifests.
+- Resumable raw JSON snapshots, per-record checkpoints, SHA-256 response hashes, bounded response size, conservative request pacing and retry handling.
+- Normalization into underlying, issuer, network, issuer-product and deployment import records with raw provider payload and source metadata retained in the import envelope.
+- Explicit platform-to-CAIP-2 network map; unknown slugs remain unresolved instead of guessed.
+- Four phased stage operations. Products require approved underlying + issuer aliases; deployments require approved product + network aliases. Partial phases can be rerun after review without re-staging already staged source identities.
+- Provider ingestion run API/table for persistent coverage, batch references and reconciliation status.
+- Coverage report for CoinGecko-tracked RWA count, detail success/failure, issuer cross-check, tokens, platforms, staged batches, review queue, unresolved mappings and unsupported networks.
+- Human review remains mandatory. Issuer labels are explicitly not verified legal names; products have no inferred entitlement/conversion ratio; deployments remain unverified and representation type unknown.
+
+Validation status for final application commit `547daa081d448adb6f5a1730afb63a7accc41ed8`: PR workflow `41051666077` and push workflow `41051659173` both completed successfully. Ruff passed; 68 backend tests passed; Alembic upgrade/downgrade passed; frontend ESLint, TypeScript, Vitest and production build passed; Vercel Preview Comments passed. No live provider snapshot has been fetched because no CoinGecko API key was configured in the execution environment. No production records have been staged.
+
+
+## 20. Sprint 5 validation evidence
+
+Application commit: \`175122bef842135e8b45b7cdecedd2f46a7bebc0\`.
+
+- PR quality workflow \`41051380072\`: passed.
+- Backend Ruff: passed.
+- Backend pytest: 67 passed (12 warnings).
+- Alembic migration upgrade and downgrade: passed.
+- Frontend ESLint, TypeScript, Vitest and Next.js production build: passed.
+- Vercel Preview Comments: passed.
+- PR #10 remains open and draft. No live CoinGecko snapshot or canonical records have been staged. Live pilot execution requires the operator's CoinGecko API key, a running registry API and its server-side \`REGISTRY_ADMIN_TOKEN\`.
