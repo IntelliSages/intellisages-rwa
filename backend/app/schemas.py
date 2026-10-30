@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 AssetType = Literal["equity", "commodity", "fund", "real_estate", "private_asset", "other"]
 RepresentationType = Literal["independent_issuance", "bridge", "wrapper", "unknown"]
-EntityType = Literal["underlying", "issuer", "issuer_product", "deployment", "venue", "perpetual_contract"]
+EntityType = Literal["underlying", "issuer", "network", "issuer_product", "deployment", "venue", "perpetual_contract"]
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)

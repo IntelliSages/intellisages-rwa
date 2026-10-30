@@ -479,9 +479,9 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
         issuer_canonical_id = issuer_map.get(issuer_id)
         if not underlying_id:
             counters["unresolved_underlying_alias"] += 1
-            continue
         if not issuer_canonical_id:
             counters["unresolved_issuer_alias"] += 1
+        if not underlying_id or not issuer_canonical_id:
             continue
         source_hash = sha256_bytes(canonical_json(token))
         canonical = {

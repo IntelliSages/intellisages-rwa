@@ -84,7 +84,7 @@ def test_foundations_create_underlyings_and_deduplicated_issuers_with_provenance
 def test_network_mapping_is_explicit_and_unknown_slugs_remain_unresolved(tmp_path):
     client = FakeCoinGecko()
     manifest = fetch_snapshot(tmp_path, client)
-    details = {"nvidia": __import__("json").loads((tmp_path / "details" / "nvidia.json").read_text())}
+    details = {"nvidia": __import__("json").loads(next((tmp_path / "details").glob("*.json")).read_text())}
     rows, coverage = build_network_rows(tmp_path, manifest, details)
     assert {row["external_id"] for row in rows} == {"ethereum", "solana"}
     assert coverage["unsupported_platform_slugs"] == ["unknown-chain"]
