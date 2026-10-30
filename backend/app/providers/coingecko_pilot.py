@@ -334,7 +334,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
                           rwa_list: list[dict[str, Any]],
                           details: dict[str, dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, int]]:
     rows: list[dict[str, Any]] = []
-    issuer_sources: dict[str, tuple[str, dict[str, Any], str]] = {}
+    issuer_sources: dict[str, tuple[str, dict[str, Any], str | None]] = {}
     counters = {"underlyings": 0, "issuers": 0, "missing_underlying_name": 0,
                 "tokens_without_issuer": 0}
     retrieved_at = manifest["retrieved_at"]
@@ -368,6 +368,11 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
                 continue
             issuer_id = issuer["id"]
             issuer_sources.setdefault(issuer_id, (issuer["name"], issuer, rwa_id))
+    issuer_list_path = output_dir / "issuers-list.json"
+    issuer_list_rows = _read_json(issuer_list_path) if issuer_list_path.exists() else []
+    for issuer_row in issuer_list_rows if isinstance(issuer_list_rows, list) else []:
+        if isinstance(issuer_row, dict) and isinstance(issuer_row.get("id"), str) and isinstance(issuer_row.get("name"), str):
+            issuer_sources.setdefault(issuer_row["id"], (issuer_row["name"], issuer_row, None))
     for issuer_id, (issuer_name, raw_issuer, source_rwa_id) in sorted(issuer_sources.items()):
         canonical = {
             "canonical_key": source_key("issuer", issuer_id),
@@ -377,7 +382,9 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         rows.append({
             "entity_type": "issuer", "source_namespace": "issuer_id", "external_id": issuer_id,
             "payload": envelope(canonical, raw_issuer, _metadata(
-                f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true", retrieved_at, issuer_id,
+                "/rwas/issuers/list" if source_rwa_id is None else f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true",
+                retrieved_at, issuer_id,
+                sha256_bytes(canonical_json(raw_issuer)) if source_rwa_id is None else
                 sha256_bytes((output_dir / "details" / f"{safe_slug(source_rwa_id, 140)}.json").read_bytes()),
                 name_semantics="CoinGecko-reported issuer label; legal identity requires independent review.",
                 observed_underlying_rwa_id=source_rwa_id,
@@ -559,6 +566,9 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
                    extra: dict[str, Any] | None = None) -> dict[str, Any]:
     _, rwa_list, details = load_snapshot(output_dir) if (output_dir / "manifest.json").exists() else (manifest, [], {})
     token_rows = extract_tokens(details)
+    issuer_list_path = output_dir / "issuers-list.json"
+    issuer_list = _read_json(issuer_list_path) if issuer_list_path.exists() else []
+    issuer_list_ids = {item.get("id") for item in issuer_list if isinstance(item, dict) and item.get("id")}
     issuer_ids = set()
     platform_pairs = set()
     tokens_missing_issuer = 0
@@ -585,7 +595,10 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
         "detail_failure_count": manifest.get("details_failed", 0),
         "detail_coverage_ratio": round(len(details) / max(1, manifest.get("requested_rwa_count", 0)), 4),
         "tokens_discovered": len(token_rows),
-        "distinct_issuer_ids": len(issuer_ids),
+        "distinct_issuer_ids_in_token_details": len(issuer_ids),
+        "distinct_issuer_ids_in_issuer_list": len(issuer_list_ids),
+        "issuer_ids_only_in_issuer_list": len(issuer_list_ids - issuer_ids),
+        "issuer_ids_only_in_token_details": len(issuer_ids - issuer_list_ids),
         "tokens_without_issuer_id": tokens_missing_issuer,
         "provider_platform_contract_entries": len(platform_pairs),
         "unsupported_platform_slugs": [],

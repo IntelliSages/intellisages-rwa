@@ -271,7 +271,7 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
     if record.status != "needs_review":
         raise HTTPException(status_code=409, detail=f"Import record is already {record.status}.")
     batch = db.get(models.RegistryImportBatch, record.batch_id)
-    payload = json.loads(record.raw_payload_json)
+    payload = _canonical_payload(json.loads(record.raw_payload_json))
 
     if decision.action == "reject":
         if not decision.note:
