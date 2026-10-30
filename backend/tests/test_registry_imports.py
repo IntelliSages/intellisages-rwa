@@ -159,3 +159,27 @@ def client(monkeypatch):
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
     engine.dispose()
+
+ 
+ 
+def test_exact_unverified_provider_alias_requires_human_approval_and_is_promoted(client):
+    underlying = client.post("/api/v1/registry/underlyings", json={
+        "canonical_key": "equity:nvidia", "display_name": "NVIDIA", "asset_type": "equity"}).json()
+    alias = client.post("/api/v1/registry/aliases", json={
+        "provider": "provider-x", "namespace": "asset-id", "external_id": "nvda-feed",
+        "effective_from": "2026-01-01", "entity_type": "underlying",
+        "entity_id": underlying["id"], "evidence_ref": "evidence:initial", "is_verified": False})
+    assert alias.status_code == 201
+    batch = stage(client, [row("underlying", "nvda-feed", {
+        "canonical_key": "equity:nvidia", "display_name": "NVIDIA", "asset_type": "equity"
+    }, "asset-id")]).json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    assert record["status"] == "needs_review"
+    assert record["candidates"][0]["match_basis"] == "exact_provider_alias_unverified"
+    decision = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "link_existing", "reviewer": "reviewer", "target_entity_id": underlying["id"],
+        "evidence_ref": "https://issuer.example/asset-identity"})
+    assert decision.status_code == 200
+    aliases = [a for a in client.get("/api/v1/registry/aliases").json() if a["external_id"] == "nvda-feed"]
+    assert len(aliases) == 1 and aliases[0]["is_verified"] is True
+    assert aliases[0]["evidence_ref"] == "https://issuer.example/asset-identity"

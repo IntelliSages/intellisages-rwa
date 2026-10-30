@@ -78,7 +78,7 @@ def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
                 _candidate(db, record, record.entity_type, item.id, "exact_canonical_key", 1.0)
         field = "display_name" if record.entity_type == "underlying" else "legal_name"
         name = payload.get(field)
-        if name:
+        if isinstance(name, str) and name:
             for item in db.scalars(select(model).where(func.lower(getattr(model, field)) == name.lower())).all():
                 _candidate(db, record, record.entity_type, item.id, "exact_name_not_unique_identity", 0.55)
     elif record.entity_type == "issuer_product":
@@ -92,14 +92,14 @@ def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
                     model.native_product_id == native_id)).all():
                 _candidate(db, record, record.entity_type, item.id, "exact_issuer_native_product_id", 1.0)
         symbol = payload.get("symbol")
-        if symbol:
+        if isinstance(symbol, str) and symbol:
             for item in db.scalars(select(model).where(model.symbol == symbol)).all():
                 _candidate(db, record, record.entity_type, item.id, "symbol_only_do_not_auto_link", 0.1)
     elif record.entity_type == "deployment":
         if payload.get("network_id") and payload.get("native_identifier"):
             try:
                 normalized = _normalise_deployment_payload(db, payload)
-            except HTTPException:
+            except (HTTPException, TypeError):
                 normalized = None
             if normalized:
                 for item in db.scalars(select(model).where(model.network_id == payload["network_id"],
@@ -172,6 +172,7 @@ def stage_import(payload: import_schemas.ImportBatchCreate, db: Session = Depend
             _audit(db, batch.id, payload.submitted_by, "record_staged", {
                 "entity_type": item.entity_type, "source_namespace": item.source_namespace,
                 "external_id": item.external_id, "candidate_count": count}, record.id)
+    _refresh_batch_status(db, batch)
     db.commit()
     db.refresh(batch)
     return _batch_read(batch)
@@ -273,6 +274,8 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
         for alias in aliases:
             if alias.entity_type != record.entity_type or alias.entity_id != target_id:
                 raise HTTPException(status_code=409, detail="Source identifier is already mapped to a different canonical entity; resolve the conflict explicitly.")
+            alias.is_verified = True
+            alias.evidence_ref = decision.evidence_ref
         if not aliases:
             db.add(models.ProviderAlias(provider=batch.source, namespace=record.source_namespace,
                 external_id=record.external_id, effective_from=date.today(), entity_type=record.entity_type,
@@ -286,6 +289,10 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
             "resolution_method": method, "evidence_ref": decision.evidence_ref}, record.id)
 
     _refresh_batch_status(db, batch)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Import decision conflicts with an existing source alias or canonical identity.") from exc
     db.refresh(record)
     return _record_read(db, record)
