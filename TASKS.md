@@ -168,3 +168,6 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [ ] Connect Home and Crypto Screener to implemented, tested read APIs after backend contracts are realized.
 - [ ] Add automated component and end-to-end tests for screener controls, sorting, null handling and responsive tables.
 - [ ] Continue shared metric/provenance components and Tokenized RWA Screener implementation.
+
+- [x] Give the remaining approved pages page-specific workspace structure, metric labels, table columns, filter dimensions and interpretation guidance.
+- [x] Keep Trader Intelligence and Event Feed reserved pending their joint specifications.

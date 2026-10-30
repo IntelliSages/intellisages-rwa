@@ -119,3 +119,7 @@ Scope:
 - The proposed screener API is documented as a logical contract only; no deployed read endpoint is assumed.
 
 This increment does not complete all sixteen detailed page workspaces or connect live data. Subsequent work includes shared provenance/status components, tokenized RWA discovery, remaining page-specific screens and backend API integration. See `docs/FRONTEND_SPRINT_1.md`.
+
+## 11. Product-page workspace design
+
+The current frontend branch also replaces the generic readiness-only route content with page-specific workspace configurations for the remaining approved surfaces. Each page receives its own metric labels, table columns, filter dimensions and interpretation note. Trader Intelligence and Event Feed remain explicitly reserved; their metrics are not activated before their specifications are approved. All data tables remain empty/unavailable until supported read APIs provide validated records.

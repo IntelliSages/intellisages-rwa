@@ -1,9 +1,22 @@
-import type {Metadata} from "next";
-import {notFound} from "next/navigation";
-import Link from "next/link";
-import {Database,Info,ShieldCheck} from "lucide-react";
-import {getPageBySlug,productPages} from "@/lib/navigation";
-type Props={params:Promise<{slug:string}>};
-export function generateStaticParams(){return productPages.map(p=>({slug:p.slug}));}
-export async function generateMetadata({params}:Props):Promise<Metadata>{const {slug}=await params;return {title:getPageBySlug(slug)?.label??"Not found"};}
-export default async function ProductPage({params}:Props){const {slug}=await params;const page=getPageBySlug(slug);if(!page)notFound();return <div className="stack"><p className="backline"><Link href="/">Market Overview</Link> / {page.label}</p><section className="welcome"><div><p className="eyebrow">{page.group.toUpperCase()} · MVP WORKSPACE</p><h1>{page.label}</h1><p className="subtitle">{page.description}</p></div><span className={page.reserved?"status status-reserved":"status status-off"}>{page.reserved?"Reserved":"Data gated"}</span></section><section className="notice"><span className="notice-icon"><Info size={18}/></span><div><b>{page.reserved?"Specification required before activation":"Live data is not connected yet"}</b><p>{page.purpose}</p></div><small>{page.reserved?"RESERVED":"DATA GATED"}</small></section><section className="columns"><article className="panel large-panel"><p className="eyebrow">DATA WORKSPACE</p><h2>Validated observations</h2><div className="empty-state tall"><Database size={23}/><b>No production observations available</b><p>This view will populate only when the backend returns validated records with canonical identity, units, source timestamps and coverage metadata.</p><span className="status status-off">Unavailable</span></div></article><article className="panel"><p className="eyebrow">IMPLEMENTATION GUARDRAILS</p><h2>Readiness requirements</h2><ul className="guardrails"><li><b>01 · Identity is explicit</b><small>Stable canonical IDs; no ticker-based fallback.</small></li><li><b>02 · Metrics carry provenance</b><small>Units, scope, observation time and source.</small></li><li><b>03 · Coverage is visible</b><small>Partial, stale, unavailable and error are distinct.</small></li><li><b>04 · History must be real</b><small>No synthetic points or forward-filled gaps.</small></li></ul><Link href="/" className="back-link"><ShieldCheck size={14}/> Return to overview</Link></article></section><p className="footnote">This page is part of the approved MVP navigation. Its presence does not imply source coverage or metric production readiness.</p></div>}
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getPageBySlug, productPages } from "@/lib/navigation";
+import { ProductWorkspace } from "@/components/product-workspace";
+
+type Props = { params: Promise<{ slug: string }> };
+
+export function generateStaticParams() {
+  return productPages.map(page => ({ slug: page.slug }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  return { title: getPageBySlug(slug)?.label ?? "Not found" };
+}
+
+export default async function ProductPage({ params }: Props) {
+  const { slug } = await params;
+  const page = getPageBySlug(slug);
+  if (!page) notFound();
+  return <ProductWorkspace page={page} />;
+}

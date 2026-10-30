@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpDown, Database, Download, Globe2, Layers3, ShieldCheck } from "lucide-react";
+import { ArrowRight, Database, Globe2, Layers3, ShieldCheck } from "lucide-react";
 import { productPages } from "@/lib/navigation";
 
 function Metric({label,detail}:{label:string;detail:string}) {
@@ -15,7 +15,7 @@ function TrendingPanel({title,description}:{title:string;description:string}) {
         <tbody><tr><td colSpan={5}><div className="empty-state"><Database size={20}/><b>No validated records available</b><p>Trending rankings require a complete eligible catalogue and comparable, timestamped observations. No sample rows are shown.</p></div></td></tr></tbody>
       </table>
     </div>
-    <div className="panel-foot"><span>Sort <ArrowUpDown size={12} style={{display:"inline",verticalAlign:"middle"}}/> · Export <Download size={12} style={{display:"inline",verticalAlign:"middle"}}/></span><span className="status status-off">Unavailable until data is connected</span></div>
+    <div className="panel-foot"><span>Sorting and export activate when validated records are connected.</span><span className="status status-off">Unavailable</span></div>
   </article>;
 }
 
