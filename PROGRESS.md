@@ -155,3 +155,12 @@ PR #7 is merged. This increment adds:
 - Explicitly unavailable market metrics; registry identity and classification do not imply live market coverage, legal verification or asset backing.
 
 **Validation status:** implementation has been committed to the feature branch. Backend Ruff/pytest/Alembic, frontend ESLint/TypeScript/Vitest/production build and both GitHub Actions workflows are not yet verified for this increment. Do not mark the work complete until those checks pass on the final commit.
+
+
+## 14. Sprint 3 CI investigation — 2026-10-30
+
+PR #8 frontend pull-request and push jobs failed in the Vitest step only. Dependency installation, ESLint and TypeScript completed successfully; the production-build step was skipped because tests failed. Backend quality succeeded in both trigger contexts.
+
+Root cause from both job logs: `tests/tokenized-rwa-screener.test.tsx` used `screen.getByText(/NVDAx/)`, which became ambiguous after the screener correctly added an anchor to the canonical detail route while retaining the symbol label. The test now asserts the accessible link name and exact destination `/tokenized-rwa-screener/product-a`, and separately verifies the issuer text. This preserves the intended navigation behaviour instead of suppressing the duplicate-match failure.
+
+Vercel preview deployment for the feature branch completed with state READY. This confirms the frontend build/deploy path, not backend connectivity or full application data readiness.
