@@ -1,48 +1,51 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** documentation baseline established; implementation status not yet audited.
+**Status:** initial product research and documentation baseline committed; source-code implementation audit remains pending.
 
 ## 1. Verified inputs received
 
 | Input | What it establishes | What it does not establish |
 |---|---|---|
 | Product vision and overview in conversation | Product purpose, users, journeys, MVP page inventory and governing principles | Deployed implementation or complete metric-level acceptance |
-| Home Screener Specification | Home purpose, headline/table definitions, interaction rules, retained sample endpoint evidence and proposed implementation | Complete Crypto/RWA universes, adjusted global totals, historical correlation or production entitlement |
-| Shared Metric Dictionary | Broad metric inventory and page-specific definitions/readiness notes | Production readiness of all listed metrics |
+| Home Screener Specification | Home purpose, headline/table definitions, interactions, retained sample endpoint evidence and proposed implementation | Complete Crypto/RWA universes, adjusted global totals, historical correlation or production entitlement |
+| Shared Metric Dictionary | 218 rendered table/card fields across fifteen pages plus Correlation/headline families | Production readiness of all listed metrics |
 | Asset Identity, Classification and Double-Counting Rules | Four approved Option B decisions and detailed identity/aggregation rules | Completed registry or validated production collectors |
-| Provider Endpoint Registry | Retained endpoint investigation and provider-specific validation boundaries | Fresh certification, full access, quota, licensing or complete source coverage |
-| Data Integration and Backend Contracts | Proposed record semantics, normalization, read-service/filter contracts and acceptance fixtures | Deployed API schema or tested production code |
-| Final MVP Review HTML | Interactive visual review candidate, current/proposed presentation, illustrative/sample-data warnings and documented prototype corrections | Live data, backend integration, complete production functionality |
+| Provider Endpoint Registry | Provider endpoints, retained sample findings, access limits, cadence targets and blockers | Fresh certification, full access, quota, licensing or complete source coverage |
+| Data Integration and Backend Contracts | Proposed record semantics, normalization, read-service/filter contracts, history/error contracts and acceptance fixtures | Deployed API schema or tested production code |
+| Final MVP Review HTML | Interactive current/proposed review shell, embedded product reference and original/current-baseline data | Live data, backend integration or production functionality |
 
 ## 2. Repository baseline
 
 - Repository: IntelliSages/intellisages-rwa
 - Default branch: main
-- Repository is accessible through the connected GitHub account.
-- README.md existed as a minimal starter and has been expanded.
-- Full source tree and code implementation have not yet been audited in this documentation pass.
-- No framework, backend, database, deployment, tests or running service is asserted until inspected.
+- Repository is private and accessible through the connected GitHub integration.
+- README.md existed as a minimal starter and was expanded.
+- Initial repository metadata reported size 0; README was the only source file confirmed before this documentation work.
+- Probes for package.json, pyproject.toml, requirements.txt, index.html, src/main.tsx, app/page.tsx and .gitignore returned 404 at the time of audit.
+- Therefore no application framework, backend, database, deployment, CI or tests have been identified.
+- The supplied HTML is a product-review/mock reference, not code found in the repository.
 
 ## 3. Documentation status
 
 | Document | Status |
 |---|---|
-| README.md | [x] Expanded |
+| README.md | [x] Expanded and linked |
 | RULES.md | [x] Established |
 | PRD.md | [x] Established |
-| ROADMAP.md | [ ] Pending |
-| ARCHITECTURE.md | [ ] Pending |
-| TASKS.md | [ ] Pending |
+| ROADMAP.md | [x] Established |
+| ARCHITECTURE.md | [x] Proposed target architecture |
+| TASKS.md | [x] Initial engineering backlog |
 | PROGRESS.md | [x] Established |
-| docs/BASELINE_AUDIT.md | [ ] Pending |
-| docs/FRONTEND_SPEC.md | [ ] Pending |
-| docs/DATA_DICTIONARY.md | [ ] Pending |
-| docs/DATA_IDENTITY_AND_AGGREGATION.md | [ ] Pending |
-| docs/PROVIDER_ENDPOINT_REGISTRY.md | [ ] Pending |
-| docs/API_CONTRACTS.md | [ ] Pending |
-| docs/VALIDATION_MATRIX.md | [ ] Pending |
-| docs/RESEARCH_AND_OPEN_DECISIONS.md | [ ] Pending |
+| docs/BASELINE_AUDIT.md | [x] Established |
+| docs/FRONTEND_SPEC.md | [x] Established |
+| docs/DATA_DICTIONARY.md | [x] Metric definitions and grouped page families |
+| docs/SCREEN_METRIC_INVENTORY.md | [x] Screen/field inventory index |
+| docs/DATA_IDENTITY_AND_AGGREGATION.md | [x] Established |
+| docs/PROVIDER_ENDPOINT_REGISTRY.md | [x] Established |
+| docs/API_CONTRACTS.md | [x] Proposed read contracts |
+| docs/VALIDATION_MATRIX.md | [x] Retained readiness and QA matrix |
+| docs/RESEARCH_AND_OPEN_DECISIONS.md | [x] External research and decisions |
 
 ## 4. Confirmed product decisions carried forward
 
@@ -59,28 +62,32 @@
 
 ## 5. External research checked
 
-- CoinGecko currently describes its API as covering coins/tokens, RWAs, exchanges, derivatives, onchain pools/trades and historical charts. This supports a broad source-family fit, not the exact entitlements or full coverage of our saved requests.
+- CoinGecko publicly describes API families for coins/tokens, RWAs, exchanges/derivatives, onchain data/trades and history. This supports source-family fit, not our entitlement or coverage.
 - Hyperliquid HIP-3 documentation describes builder-deployed perp DEXs with deployer-defined market/oracle specifications and independent DEX settings. This reinforces builder-scoped contract identity.
-- ERC-3643 defines permissioned token and identity/compliance interfaces. The standard itself does not certify that a particular token is legally compliant or confer shareholder rights.
+- ERC-3643 defines permissioned token and identity/compliance interfaces; the standard itself does not certify legal compliance or confer shareholder rights.
+- SEC staff's 28 January 2026 tokenized securities statement distinguishes issuer-sponsored and third-party tokenization models and notes that structures/rights vary. It is a staff statement, not a Commission rule.
+- BIS Annual Economic Report 2026 discusses interoperability fragmentation and bridge-related operational risks.
 
 See docs/RESEARCH_AND_OPEN_DECISIONS.md for links and implications.
 
 ## 6. Current blockers / next actions
 
-1. Complete repository tree and code audit.
-2. Compare current frontend implementation against the supplied HTML review candidate.
-3. Recover/inspect the full source metric dictionary and preserve all page-specific definitions.
-4. Map every metric to source endpoint, field, units, formula, evidence and validation status.
-5. Validate provider access, quota, licensing and refresh feasibility.
+1. Complete source-code audit after code is added to the repository.
+2. Inspect and map every embedded page/interaction in the supplied HTML to final screen requirements.
+3. Reconcile every source metric/feature ID against DATA_DICTIONARY.md and SCREEN_METRIC_INVENTORY.md.
+4. Validate provider access, quota, licensing and refresh feasibility.
+5. Approve product legal/rights metadata model and disclosure review.
 6. Agree reserved Trader Intelligence and Event Feed specifications.
-7. Create initial domain schema and vertical-slice implementation plan.
+7. Create domain schema and first vertical-slice implementation plan.
 
 ## 7. Decision log
 
 | Date | Decision / finding | Status |
 |---|---|---|
-| 2026-10-30 | Use a documentation hierarchy with product, rules, roadmap, architecture, tasks/progress and domain reference docs | Established |
+| 2026-10-30 | Use comprehensive product/rules/roadmap/architecture/tasks/progress and domain reference docs | Established |
 | 2026-10-30 | Keep source evidence, proposals and implementation results explicitly separate | Binding |
-| 2026-10-30 | Do not claim code or production readiness before repository/test audit | Binding |
+| 2026-10-30 | Repository has no application source/config files confirmed at baseline; implementation stack remains open | Verified baseline |
+| 2026-10-30 | Do not claim code or production readiness before implementation and tests are audited | Binding |
+| 2026-10-30 | Add tokenization model/claim-rights metadata as a research recommendation, not an approved legal classifier | Proposal |
 
-Update this file whenever a task changes status. Link commits, test runs, source fixtures or QA artifacts. Do not mark a task complete based only on a plan or a code change.
+Update this file whenever a task changes status. Link commits, test runs, source fixtures or QA artifacts. Do not mark a task complete based only on a plan or code change.
