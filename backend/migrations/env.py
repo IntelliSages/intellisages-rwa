@@ -66,15 +66,19 @@ def _verify_postgresql_schema(connection):
         "SELECT pg_catalog.to_regclass('alembic_version')"
     ).scalar_one_or_none()
     if version_table is None:
-        logger.info("Alembic version table is absent; no application tables expected.")
-        return
+        raise RuntimeError(
+            "Alembic migration completed without creating alembic_version. "
+            "The PostgreSQL schema was not migrated; refusing to start the API."
+        )
 
     revision = connection.exec_driver_sql(
         "SELECT version_num FROM alembic_version"
     ).scalar_one_or_none()
     if revision is None:
-        logger.info("Alembic schema is at base revision; no application tables expected.")
-        return
+        raise RuntimeError(
+            "Alembic migration completed but alembic_version contains no revision. "
+            "Refusing to start the API against an unversioned PostgreSQL schema."
+        )
 
     missing = connection.exec_driver_sql(
         """
@@ -123,9 +127,17 @@ def run_migrations_online():
         if connection.dialect.name == "postgresql":
             _log_postgresql_target(connection)
 
-        # Existing databases may already have a default VARCHAR(32) version
-        # column. Widen that table before Alembic writes longer revision IDs.
+        # The target inspection above executes SELECT statements. SQLAlchemy 2.x
+        # autobegins a transaction for those statements. Alembic treats an
+        # already-active connection transaction as externally managed, so its
+        # begin_transaction() context will not commit it. On a fresh database,
+        # ensure_alembic_version_column_length() returns without committing.
+        # Explicitly end any preflight transaction so Alembic owns the
+        # migration transaction and commits it when the context exits.
         ensure_alembic_version_column_length(connection)
+        if connection.in_transaction():
+            connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -133,8 +145,10 @@ def run_migrations_online():
         with context.begin_transaction():
             context.run_migrations()
 
-        if connection.dialect.name == "postgresql":
-            _verify_postgresql_schema(connection)
+            # Verify before commit: a failed verification rolls back the
+            # migration instead of persisting a partial or unusable schema.
+            if connection.dialect.name == "postgresql":
+                _verify_postgresql_schema(connection)
 
 
 if context.is_offline_mode():
