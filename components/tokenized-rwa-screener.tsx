@@ -12,9 +12,9 @@ import styles from "./tokenized-rwa-screener.module.css";
 
 const PAGE_SIZE = 25;
 type ApiError = { code: string; message: string; unavailable: boolean };
-type UnderlyingMarketData = {
-  underlying_id: string;
+type ProviderMarketObservation = {
   provider_rwa_id: string;
+  asset_type: string;
   name: string;
   symbol: string;
   current_price_usd: number | null;
@@ -80,8 +80,10 @@ export function TokenizedRwaScreener() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [retry, setRetry] = useState(0);
-  const [marketData, setMarketData] = useState<UnderlyingMarketData[]>([]);
+  const [marketData, setMarketData] = useState<ProviderMarketObservation[]>([]);
   const [marketCoverage, setMarketCoverage] = useState<string>("loading");
+  const [marketSearch, setMarketSearch] = useState("");
+  const [marketRunAt, setMarketRunAt] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -140,12 +142,13 @@ export function TokenizedRwaScreener() {
         .then(async response => {
           const payload = await response.json();
           if (!response.ok) throw new Error("Market data unavailable");
-          return payload as { status?: string; items?: UnderlyingMarketData[] };
+          return payload as { status?: string; items?: ProviderMarketObservation[]; run?: { completed_at?: string | null } };
         })
         .then(payload => {
           if (!controller.signal.aborted) {
             setMarketData(Array.isArray(payload.items) ? payload.items : []);
             setMarketCoverage(payload.status ?? "unavailable");
+            setMarketRunAt(payload.run?.completed_at ?? null);
           }
         })
         .catch(() => {
@@ -159,6 +162,17 @@ export function TokenizedRwaScreener() {
       controller.abort();
     };
   }, []);
+
+  const filteredMarketData = useMemo(() => {
+    const query = marketSearch.trim().toLowerCase();
+    if (!query) return marketData;
+    return marketData.filter(item =>
+      item.name.toLowerCase().includes(query) ||
+      item.symbol.toLowerCase().includes(query) ||
+      item.provider_rwa_id.toLowerCase().includes(query) ||
+      item.asset_type.toLowerCase().includes(query)
+    );
+  }, [marketData, marketSearch]);
 
   const activeFilters = useMemo(
     () => Number(issuerId !== "all") + Number(networkId !== "all"),
@@ -197,26 +211,17 @@ export function TokenizedRwaScreener() {
       <article><span>Matching registry products</span><strong>{data ? data.total.toLocaleString() : "—"}</strong><small>{data ? "Current filters · registry only" : "Awaiting catalogue response"}</small></article>
       <article><span>Products on this page</span><strong>{data ? data.items.length.toLocaleString() : "—"}</strong><small>Current result page · max {PAGE_SIZE}</small></article>
       <article><span>Verified network facets</span><strong>{data ? data.facets.networks.length.toLocaleString() : "—"}</strong><small>Networks with verified product deployments</small></article>
-      <article><span>Market observations</span><strong className={styles.pendingValue}>Not connected</strong><small>Not inferred from identity records</small></article>
+      <article><span>CoinGecko observations</span><strong>{marketCoverage === "loading" ? "—" : marketData.length.toLocaleString()}</strong><small>Provider records · separate from verified registry identities</small></article>
     </section>
 
-    <section style={{background:"#fff",border:"1px solid #e9edf3",borderRadius:10,padding:16,display:"grid",gap:10}}>
-      <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-        <div><b style={{fontSize:12,color:"#344057"}}>CoinGecko underlying market snapshots</b><p style={{fontSize:9,color:"#8994a5",margin:"4px 0 0"}}>Aggregate tokenized RWA market data, not issuer-product pricing or underlying spot prices. Only independently verified provider-to-canonical aliases are shown.</p></div>
-        <span style={{fontSize:9,color:marketCoverage==="complete"?"#27845c":"#9a7134"}}>{marketCoverage==="loading"?"Checking provider refresh…":marketCoverage==="unavailable"?"No successful refresh":marketCoverage==="complete"?"Complete provider snapshot":"Partial provider coverage"}</span>
+    <section style={{background:"#fff",border:"1px solid #e9edf3",borderRadius:10,padding:16,display:"grid",gap:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap",alignItems:"start"}}>
+        <div><b style={{fontSize:12,color:"#344057"}}>CoinGecko RWA market observations</b><p style={{fontSize:9,color:"#8994a5",margin:"4px 0 0",maxWidth:760}}>Live provider-reported market data for CoinGecko's tracked RWA universe. These observations are displayed independently of the canonical issuer-product registry and are not proof of legal identity, backing, tokenization rights or an issuer product.</p></div>
+        <span style={{fontSize:9,color:marketCoverage==="complete"?"#27845c":marketCoverage==="partial"?"#9a7134":"#8994a5"}}>{marketCoverage==="loading"?"Checking provider refresh…":marketCoverage==="unavailable"?"No successful refresh":marketCoverage==="complete"?"Complete provider snapshot":marketCoverage==="partial"?"Partial provider coverage":"Provider status unavailable"}</span>
       </div>
-      {data && data.items.length>0 && marketData.filter(item=>data.items.some(product=>product.underlying.id===item.underlying_id)).length>0
-        ? <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
-            <thead><tr>{["Underlying","Price (USD)","Market cap (USD)","24h volume (USD)","24h change","7d change","Observed / retrieved"].map(label=><th key={label} style={{textAlign:"left",padding:"8px",color:"#8994a5",borderBottom:"1px solid #edf0f4",whiteSpace:"nowrap"}}>{label}</th>)}</tr></thead>
-            <tbody>{marketData.filter(item=>data.items.some(product=>product.underlying.id===item.underlying_id)).map(item=><tr key={item.underlying_id}>
-              <td style={{padding:8,color:"#344057",fontWeight:600}}>{item.name} ({item.symbol.toUpperCase()})</td>
-              {[item.current_price_usd,item.market_cap_usd,item.total_volume_24h_usd].map((value,index)=><td key={index} style={{padding:8,color:"#536075"}}>{value===null?"—":value.toLocaleString(undefined,{maximumFractionDigits:4})}</td>)}
-              {[item.price_change_24h_pct,item.price_change_7d_pct].map((value,index)=><td key={index} style={{padding:8,color:"#536075"}}>{value===null?"—":value.toFixed(2)+"%"}</td>)}
-              <td style={{padding:8,color:item.freshness==="stale"?"#ad6b39":"#536075",whiteSpace:"nowrap"}}>{item.provider_updated_at?new Date(item.provider_updated_at).toLocaleString():"Provider time unavailable"}<br/>Retrieved {new Date(item.retrieved_at).toLocaleString()} · {item.freshness}</td>
-            </tr>)}</tbody>
-          </table></div>
-        : <p style={{fontSize:10,color:"#8994a5",margin:0}}>{marketCoverage==="unavailable"?"Market snapshots are not available yet. Configure the backend worker and CoinGecko API key.": "No market observations are linked to the current canonical underlyings through verified CoinGecko aliases. Unverified records are intentionally excluded."}</p>}
-      <small style={{fontSize:8,color:"#a1a9b6"}}>Source: CoinGecko RWA Markets API · 15-minute freshness threshold · provider-reported market metrics · liquidity and historical charts require separately entitled endpoints.</small>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:10,color:"#536075"}}><b>{marketData.length.toLocaleString()}</b> observations available · {marketData.filter(item=>item.freshness==="available").length.toLocaleString()} fresh · {marketData.filter(item=>item.freshness==="stale").length.toLocaleString()} stale</span><input aria-label="Search CoinGecko observations" placeholder="Search name, symbol or asset type…" value={marketSearch} onChange={event=>setMarketSearch(event.target.value)} style={{border:"1px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontSize:10,minWidth:240,maxWidth:"100%"}}/></div>
+      {marketData.length>0 ? filteredMarketData.length>0 ? <div style={{overflow:"auto",maxHeight:460,borderTop:"1px solid #edf0f4"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}><thead style={{position:"sticky",top:0,background:"#fff",zIndex:1}}><tr>{["Underlying / asset","Type","Price (USD)","Market cap (USD)","24h volume (USD)","24h change","7d change","Freshness","Provider updated"].map(label=><th key={label} style={{textAlign:"left",padding:"9px 8px",color:"#8994a5",borderBottom:"1px solid #edf0f4",whiteSpace:"nowrap"}}>{label}</th>)}</tr></thead><tbody>{filteredMarketData.map(item=><tr key={item.provider_rwa_id} style={{borderBottom:"1px solid #f1f3f6"}}><td style={{padding:8,color:"#344057",fontWeight:600,whiteSpace:"nowrap"}}>{item.name} <span style={{color:"#8994a5",fontWeight:400}}>({item.symbol.toUpperCase()})</span><br/><small style={{color:"#a1a9b6",fontWeight:400}}>{item.provider_rwa_id}</small></td><td style={{padding:8,color:"#536075",textTransform:"capitalize"}}>{item.asset_type.replaceAll("_"," ")}</td>{[item.current_price_usd,item.market_cap_usd,item.total_volume_24h_usd].map((value,index)=><td key={index} style={{padding:8,color:"#536075",whiteSpace:"nowrap"}}>{value===null?"—":value.toLocaleString(undefined,{maximumFractionDigits:4})}</td>)}{[item.price_change_24h_pct,item.price_change_7d_pct].map((value,index)=><td key={index} style={{padding:8,color:value===null?"#8994a5":value>=0?"#27845c":"#b45353",whiteSpace:"nowrap"}}>{value===null?"—":value.toFixed(2)+"%"}</td>)}<td style={{padding:8,color:item.freshness==="stale"?"#ad6b39":"#27845c"}}>{item.freshness}</td><td style={{padding:8,color:"#536075",whiteSpace:"nowrap"}}>{item.provider_updated_at?new Date(item.provider_updated_at).toLocaleString():"Not supplied"}</td></tr>)}</tbody></table></div> : <p style={{fontSize:10,color:"#8994a5",margin:0}}>No provider observations match this search.</p> : <p style={{fontSize:10,color:"#8994a5",margin:0}}>{marketCoverage==="unavailable"?"No successful provider refresh is available. Check the backend worker and CoinGecko API credentials.":"Waiting for the first successful CoinGecko market-data refresh."}</p>}
+      <small style={{fontSize:8,color:"#a1a9b6"}}>Source: CoinGecko RWA Markets API · {marketRunAt ? "Last successful refresh " + new Date(marketRunAt).toLocaleString() : "Refresh timestamp unavailable"} · 15-minute freshness threshold · provider-reported metrics only. Missing or stale values remain explicit.</small>
     </section>
 
     <section className={styles.workspace}>
