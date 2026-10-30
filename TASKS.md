@@ -158,3 +158,13 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 ## Definition of done
 
 A task is done only when code is merged, tests are executed, evidence is recorded, metric readiness is updated, documentation reflects the implementation and remaining limitations are explicit. A mock UI, successful one-off request, written plan or code change without executed evidence is not completion evidence.
+
+## FRONTEND SPRINT 1 — Home and Crypto Screener
+
+- [x] Add Home Trending Crypto and Trending Tokenized Assets workspace layouts with honest unavailable states.
+- [x] Add dedicated Crypto Screener route and interaction controls (search, category/network filters, sort direction, reset).
+- [x] Keep export and pagination disabled until validated catalogue data is available.
+- [x] Preserve all sixteen approved navigation destinations and avoid mock market data.
+- [ ] Connect Home and Crypto Screener to implemented, tested read APIs after backend contracts are realized.
+- [ ] Add automated component and end-to-end tests for screener controls, sorting, null handling and responsive tables.
+- [ ] Continue shared metric/provenance components and Tokenized RWA Screener implementation.

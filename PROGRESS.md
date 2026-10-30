@@ -107,3 +107,15 @@ The current increment adds evidence-bearing migration events with predecessor/su
 The event date is a calendar date. Intraday cutover precision, observation-to-contract lineage, contract lifecycle effective periods and source reconciliation remain outside this increment. Migration evidence is required and verification defaults to false.
 
 Initial implementation validation on commit `8289736fe72924855c16d47be4fd3401d0613355`: GitHub Actions push run `40988066268` passed both quality jobs. Backend: Ruff passed, 28 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. The final documentation commit must be revalidated before PR creation.
+
+## 10. Frontend Sprint 1 — Home and Crypto Screener
+
+A first product-facing frontend increment is being implemented on `feat/frontend-home-crypto-screener`.
+
+Scope:
+- Home includes separate Trending Crypto and Trending Tokenized Assets workspaces alongside headline metric cards, provider coverage, discovery links and the approved 16-page directory.
+- Crypto Screener has a dedicated route, search, category/network filter controls, sort field/direction, reset behaviour, semantic table columns, responsive table layout and explicit unavailable state.
+- No market rows, rankings, prices, volumes, market caps, counts or historical series are fabricated. CSV export and pagination remain disabled until a validated dataset exists.
+- The proposed screener API is documented as a logical contract only; no deployed read endpoint is assumed.
+
+This increment does not complete all sixteen detailed page workspaces or connect live data. Subsequent work includes shared provenance/status components, tokenized RWA discovery, remaining page-specific screens and backend API integration. See `docs/FRONTEND_SPRINT_1.md`.
