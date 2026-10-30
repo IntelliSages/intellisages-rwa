@@ -273,7 +273,7 @@ def test_product_detail_resolves_exact_canonical_id_and_returns_provenance(clien
 
 
 def test_product_detail_does_not_resolve_symbols_or_non_rwa_records(client):
-    _, issuer, product = create_product(
+    _, _, product = create_product(
         client, issuer_key="issuer:alpha", issuer_name="Alpha Issuer", product_id="NVDAx"
     )
     symbol_lookup = client.get("/api/v1/catalogue/tokenized-products/NVDA")
