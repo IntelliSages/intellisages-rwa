@@ -319,11 +319,18 @@ def test_provider_run_routes_require_admin_token(client):
 def test_create_new_allows_audited_canonical_override_for_provider_issuer_label(client):
     batch = stage(client, [row("issuer", "provider-issuer-1", {
         "canonical_payload": {"canonical_key": "coingecko:issuer:provider-issuer-1",
-                              "legal_name": "Provider label"},
+                              "provider_name": "Provider label"},
         "source_payload": {"id": "provider-issuer-1", "name": "Provider label"},
         "source_metadata": {"name_semantics": "provider label, not legal identity"}
     }, "issuer_id")], source="coingecko").json()
     record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    # A provider label is not accepted as a canonical legal name.
+    missing_legal_name = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "create_new", "reviewer": "reviewer",
+        "evidence_ref": "https://issuer.example/legal"})
+    assert missing_legal_name.status_code == 422
+    assert client.get("/api/v1/registry/issuers").json() == []
+
     approved = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
         "action": "create_new", "reviewer": "reviewer",
         "evidence_ref": "https://issuer.example/legal",
@@ -337,12 +344,33 @@ def test_create_new_allows_audited_canonical_override_for_provider_issuer_label(
     assert audit[-1]["details"]["canonical_payload_override"]["legal_name"] == "Provider Issuer Holdings Ltd"
 
 
+
+
+
+def test_provider_issuer_name_only_surfaces_weak_candidate(client):
+    issuer = client.post("/api/v1/registry/issuers", json={
+        "canonical_key": "issuer:provider-label", "legal_name": "Provider label"}).json()
+    batch = stage(client, [row("issuer", "provider-issuer-3", {
+        "canonical_payload": {"canonical_key": "coingecko:issuer:provider-issuer-3",
+                              "provider_name": "Provider label"},
+        "source_payload": {"id": "provider-issuer-3", "name": "Provider label"},
+        "source_metadata": {"name_semantics": "provider label, not legal identity"}
+    }, "issuer_id")], source="coingecko").json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    candidates = record["candidates"]
+    assert len(candidates) == 1
+    assert candidates[0]["candidate_entity_id"] == issuer["id"]
+    assert candidates[0]["match_basis"] == "provider_name_not_unique_identity"
+    assert candidates[0]["confidence"] == 0.55
+    assert record["status"] == "needs_review"
+    assert record["resolved_entity_id"] is None
+
 def test_canonical_payload_override_is_rejected_for_link_existing(client):
     issuer = client.post("/api/v1/registry/issuers", json={
         "canonical_key": "issuer:existing", "legal_name": "Existing Legal Entity"}).json()
     batch = stage(client, [row("issuer", "provider-issuer-2", {
         "canonical_payload": {"canonical_key": "coingecko:issuer:provider-issuer-2",
-                              "legal_name": "Provider label"}
+                              "provider_name": "Provider label"}
     }, "issuer_id")], source="coingecko").json()
     record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
     response = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
