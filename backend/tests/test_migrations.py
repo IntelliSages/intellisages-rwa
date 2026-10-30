@@ -75,3 +75,47 @@ def test_downgrade_refuses_to_collapse_multiple_alias_periods(tmp_path, monkeypa
         ).scalar_one()
         assert count == 2
     engine.dispose()
+
+
+
+def test_perpetual_contract_migration_table_upgrades_and_downgrades_cleanly(tmp_path, monkeypatch):
+    database_path = tmp_path / "perpetual-migrations.db"
+    database_url = f"sqlite:///{database_path}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    config = Config("alembic.ini")
+
+    command.upgrade(config, "0003_effective_provider_aliases")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        tables_before = {
+            row[0] for row in connection.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            ).all()
+        }
+        assert "perpetual_contract_migrations" not in tables_before
+    engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        columns = {
+            row[1] for row in connection.execute(
+                text("PRAGMA table_info(perpetual_contract_migrations)")
+            ).all()
+        }
+        assert {
+            "id", "predecessor_contract_id", "successor_contract_id", "event_type",
+            "effective_at", "source", "evidence_ref", "notes", "is_verified",
+        }.issubset(columns)
+    engine.dispose()
+
+    command.downgrade(config, "0003_effective_provider_aliases")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        tables_after = {
+            row[0] for row in connection.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            ).all()
+        }
+        assert "perpetual_contract_migrations" not in tables_after
+    engine.dispose()

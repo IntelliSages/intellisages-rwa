@@ -113,6 +113,61 @@ def create_perpetual(payload: schemas.PerpetualCreate, db: Session = Depends(get
 def list_perpetuals(db: Session = Depends(get_db)):
     return _list(db, models.PerpetualContract)
 
+
+@router.post("/perpetual-contract-migrations", response_model=schemas.PerpetualMigrationRead, status_code=201)
+def create_perpetual_migration(
+    payload: schemas.PerpetualMigrationCreate, db: Session = Depends(get_db)
+):
+    _require(db, models.PerpetualContract, payload.predecessor_contract_id, "Predecessor perpetual contract")
+    if payload.successor_contract_id is not None:
+        _require(db, models.PerpetualContract, payload.successor_contract_id, "Successor perpetual contract")
+
+        # Migration edges are directed. Reject a new edge if the successor already
+        # reaches the predecessor; otherwise historical lineage would become cyclic.
+        edges = db.execute(
+            select(
+                models.PerpetualContractMigration.predecessor_contract_id,
+                models.PerpetualContractMigration.successor_contract_id,
+            ).where(models.PerpetualContractMigration.successor_contract_id.is_not(None))
+        ).all()
+        adjacency: dict[str, set[str]] = {}
+        for predecessor_id, successor_id in edges:
+            adjacency.setdefault(predecessor_id, set()).add(successor_id)
+
+        pending = [payload.successor_contract_id]
+        visited: set[str] = set()
+        while pending:
+            current = pending.pop()
+            if current == payload.predecessor_contract_id:
+                raise HTTPException(status_code=409, detail="Perpetual contract migration would create a lineage cycle.")
+            if current in visited:
+                continue
+            visited.add(current)
+            pending.extend(adjacency.get(current, ()))
+
+    duplicate = db.scalar(
+        select(models.PerpetualContractMigration).where(
+            models.PerpetualContractMigration.predecessor_contract_id == payload.predecessor_contract_id,
+            models.PerpetualContractMigration.successor_contract_id == payload.successor_contract_id,
+            models.PerpetualContractMigration.event_type == payload.event_type,
+            models.PerpetualContractMigration.effective_at == payload.effective_at,
+        )
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="This perpetual contract migration event is already registered.")
+    return _create(db, models.PerpetualContractMigration, payload)
+
+
+@router.get("/perpetual-contract-migrations", response_model=list[schemas.PerpetualMigrationRead])
+def list_perpetual_migrations(db: Session = Depends(get_db)):
+    return db.scalars(
+        select(models.PerpetualContractMigration).order_by(
+            models.PerpetualContractMigration.effective_at,
+            models.PerpetualContractMigration.id,
+        )
+    ).all()
+
+
 @router.post("/aliases", response_model=schemas.AliasRead, status_code=201)
 def create_alias(payload: schemas.AliasCreate, db: Session = Depends(get_db)):
     _require(db, ENTITY_MODELS[payload.entity_type], payload.entity_id, payload.entity_type)

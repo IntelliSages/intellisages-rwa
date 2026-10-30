@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation and canonical identity registry increments PR #2 and PR #3 are merged. Effective-dated provider alias history is implemented on a feature branch; its full CI suite passed on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`. PR creation is gated on the final documentation commit passing again.
+**Status:** Frontend foundation and canonical identity registry increments PRs #2, #3 and #4 are merged. Perpetual contract migration history is in progress on `feat/perpetual-contract-migration-history`; final CI evidence is pending. PR creation is gated on the final documentation commit passing again.
 
 ## 1. Verified implementation evidence
 
@@ -91,8 +91,17 @@ Branch `feat/identity-supply-classification` adds:
 
 The merged work does not establish that two products are economically equivalent: membership requires evidence and remains unverified by default. Provider-global inclusion is nullable, not inferred.
 
-## 9. Effective-dated provider aliases — in progress
+## 9. Effective-dated provider aliases — merged in PR #4
 
 Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, a controlled close-period endpoint, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task.
 
 Validation on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`: GitHub Actions push run `40986320572` passed both quality jobs. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. This increment is not merged; PR creation follows a final CI pass after this evidence update.
+
+
+## 10. Perpetual contract migration history — implementation in progress
+
+Branch: `feat/perpetual-contract-migration-history`.
+
+The current increment adds evidence-bearing directed migration events between existing perpetual contract records. Events distinguish symbol changes, native market ID changes, venue migrations, replacements, delistings and expiries. Terminal delisting/expiry events have no successor; other event types require one. Self-links, missing contract references, duplicate events and lineage cycles are rejected. Contract identities and their venue/domain/builder/native identifiers remain unchanged; the event does not assert economic equivalence or rewrite historical observations.
+
+The event date is a calendar date. Intraday cutover precision, observation-to-contract lineage, contract lifecycle effective periods and source reconciliation remain outside this increment. Migration evidence is required and verification defaults to false. Push and PR CI evidence will be recorded here only after the final commit passes both workflows.
