@@ -240,7 +240,7 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [x] Add persistent provider ingestion run and coverage API/migration.
 - [x] Add coverage reporting for provider-list scope, detail failures, issuer IDs, product tokens, platform mappings and review outcomes.
 - [x] Add automated adapter and phased reconciliation tests.
-- [x] Pass Ruff, 67 pytest tests and Alembic upgrade/downgrade on application commit 175122bef842135e8b45b7cdecedd2f46a7bebc0; frontend ESLint, TypeScript, Vitest and production build also passed.
+- [x] Pass Ruff, 68 pytest tests and Alembic upgrade/downgrade on application commit 547daa081d448adb6f5a1730afb63a7accc41ed8; frontend ESLint, TypeScript, Vitest and production build also passed on both push and PR workflows.
 - [ ] Run a full authenticated CoinGecko snapshot using a locally configured API key.
 - [ ] Stage foundations and networks; approve only after source evidence review.
 - [ ] Stage products after approved issuer/underlying mappings; review and approve.

@@ -235,7 +235,7 @@ Implemented in this increment:
 - Coverage report for CoinGecko-tracked RWA count, detail success/failure, issuer cross-check, tokens, platforms, staged batches, review queue, unresolved mappings and unsupported networks.
 - Human review remains mandatory. Issuer labels are explicitly not verified legal names; products have no inferred entitlement/conversion ratio; deployments remain unverified and representation type unknown.
 
-Validation status for application commit `175122bef842135e8b45b7cdecedd2f46a7bebc0`: pull-request workflow `41051380072` completed successfully. Ruff passed; 67 backend tests passed; Alembic upgrade/downgrade passed; frontend ESLint, TypeScript, Vitest and production build passed; Vercel Preview Comments passed. A duplicate push-triggered workflow was still running at the time of this update. No live provider snapshot has been fetched because no CoinGecko API key was configured in the execution environment. No production records have been staged.
+Validation status for final application commit `547daa081d448adb6f5a1730afb63a7accc41ed8`: PR workflow `41051666077` and push workflow `41051659173` both completed successfully. Ruff passed; 68 backend tests passed; Alembic upgrade/downgrade passed; frontend ESLint, TypeScript, Vitest and production build passed; Vercel Preview Comments passed. No live provider snapshot has been fetched because no CoinGecko API key was configured in the execution environment. No production records have been staged.
 
 
 ## 20. Sprint 5 validation evidence
