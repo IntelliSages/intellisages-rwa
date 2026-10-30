@@ -1,6 +1,6 @@
-# Canonical Identity Registry — First Implementation Slice
+# Canonical Identity Registry — Implementation Notes
 
-**Status:** implemented on PR #2; frontend and backend CI passed, awaiting merge.  
+**Status:** initial identity foundation merged in PR #2. Economic-supply and classification extensions are being added on `feat/identity-supply-classification` and are pending CI.  
 **Governing source:** MVP_IMPLEMENTATION_BLUEPRINT.md and DATA_IDENTITY_AND_AGGREGATION.md.
 
 ## Scope delivered in this slice
@@ -73,3 +73,14 @@ One upstream Starlette/AnyIO deprecation warning appeared during test collection
 - Provider ingestion, source observations, market metrics or frontend integration.
 
 These remain open tasks. The registry must not be exposed as a public write API until authentication, authorization, audit logging and operational controls are implemented.
+
+## Economic-supply grouping and classification extension
+
+The follow-on branch adds a distinct economic-supply group rather than collapsing issuer products. Memberships point to issuer products and carry a membership type (native, bridge or wrapper), effective date range, evidence reference and verification flag. Membership is unverified by default; the API does not infer that a bridge or wrapper shares supply with its source.
+
+The classification registry records `crypto`, `rwa`, `other` or `unknown` for an underlying or issuer product over a date range. Each record requires a source and evidence reference. Provider-global inclusion is nullable so unknown coverage is not represented as false. Overlapping effective periods for the same entity are rejected. These records are evidence-bearing registry inputs, not a claim that provider coverage or legal classification has been independently validated.
+
+New routes:
+- POST/GET `/supply-groups`
+- POST/GET `/supply-memberships`
+- POST/GET `/classifications` (optional entity filters)

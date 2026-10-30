@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation merged and verified. Canonical identity registry PR #2 has passing frontend/backend CI and awaits merge.
+**Status:** Frontend foundation and canonical identity registry PR #2 are merged. EPIC 1 extensions are in implementation on `feat/identity-supply-classification`; CI is pending.
 
 ## 1. Verified implementation evidence
 
@@ -9,7 +9,7 @@
 |---|---|---|
 | Frontend foundation | PR #1 merged to main; merge commit b23f2b9a54d5b8a470fbc122b34a249da8b31c12 | Merged |
 | Frontend quality | GitHub Actions run 40981455334 on merge commit | Passed: dependency install, ESLint, TypeScript and Next.js production build |
-| Canonical identity registry | PR #2; head commit 2e3ddd8f2fb858f91adfdc5fbf3ac9e9c7152aff | Open draft; awaiting merge |
+| Canonical identity registry | PR #2 merged at b1ca3171b1495e0c1516408567b653182e6815fa | Merged |
 | Registry PR quality | GitHub Actions PR run 40983315689 | Passed: frontend and backend jobs |
 | Backend lint/tests/migrations | Run 40983315689, Backend quality job | Ruff passed; 10 tests passed; Alembic upgrade and downgrade passed |
 | Frontend regression gates | Run 40983315689, Frontend quality job | Dependency install, ESLint, TypeScript and production build passed |
@@ -24,7 +24,7 @@ Frontend CI runs dependency installation, ESLint, TypeScript and production buil
 
 ## 3. Canonical identity registry — current implementation scope
 
-The active backend increment introduces a FastAPI + SQLAlchemy 2.x + Alembic foundation with PostgreSQL as the intended shared-environment database and SQLite isolated to tests.
+The merged backend increment introduces a FastAPI + SQLAlchemy 2.x + Alembic foundation with PostgreSQL as the intended shared-environment database and SQLite isolated to tests.
 
 Initial entities:
 - Underlying asset
@@ -45,7 +45,7 @@ Enforced behaviours:
 - Unknown canonical IDs return not found; no default asset fallback.
 - Unverified deployments remain explicitly unverified.
 
-The implementation does not yet include effective-dated alias history, economic-supply groups, evidence-backed bridge equivalence, classification history, provider-global inclusion evidence, spot/pool/loan-market entities, registry import/reconciliation, authentication or provider ingestion.
+The merged implementation does not yet include effective-dated alias history, economic-supply groups, evidence-backed bridge equivalence, classification history, provider-global inclusion evidence, spot/pool/loan-market entities, registry import/reconciliation, authentication or provider ingestion.
 
 ## 4. Governing product decisions
 
@@ -76,3 +76,13 @@ The implementation does not yet include effective-dated alias history, economic-
 No provider integration, production market observation, metric calculation or production data entitlement is asserted by this implementation. A registry record's existence does not prove its identity, backing, rights, deployment or source evidence; those remain explicit review responsibilities.
 
 The MVP implementation blueprint remains the governing scope. See docs/IDENTITY_REGISTRY.md for the registry contract and omitted scope.
+
+## 7. Follow-on identity extension in progress
+
+Branch `feat/identity-supply-classification` adds:
+- Economic-supply groups and product memberships with effective dates, evidence references and explicit verification status.
+- Overlap prevention so a product cannot be assigned to two concurrent economic-supply memberships.
+- Versioned classification records for underlying assets and issuer products, including nullable provider-global inclusion evidence.
+- Date-range overlap validation and filtered classification reads.
+
+This work is not complete until frontend/backend CI and Alembic upgrade/downgrade pass. It does not establish that two products are economically equivalent: membership requires evidence and remains unverified by default. Provider-global inclusion is nullable, not inferred.

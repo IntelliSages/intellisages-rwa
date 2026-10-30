@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import uuid4
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def new_id() -> str:
@@ -95,3 +95,34 @@ class ProviderAlias(Base):
     entity_id: Mapped[str] = mapped_column(String(36), index=True)
     evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+
+class EconomicSupplyGroup(Base):
+    __tablename__ = "economic_supply_groups"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_key: Mapped[str] = mapped_column(String(160), unique=True)
+    display_name: Mapped[str] = mapped_column(String(240))
+    methodology_notes: Mapped[str] = mapped_column(String(1000))
+
+class EconomicSupplyMembership(Base):
+    __tablename__ = "economic_supply_memberships"
+    __table_args__ = (UniqueConstraint("issuer_product_id", "effective_from", name="uq_supply_member_product_start"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    group_id: Mapped[str] = mapped_column(ForeignKey("economic_supply_groups.id"), index=True)
+    issuer_product_id: Mapped[str] = mapped_column(ForeignKey("issuer_products.id"), index=True)
+    membership_type: Mapped[str] = mapped_column(String(20))
+    effective_from: Mapped[date] = mapped_column(Date)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    evidence_ref: Mapped[str] = mapped_column(String(500))
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+
+class ProductClassification(Base):
+    __tablename__ = "product_classifications"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    entity_type: Mapped[str] = mapped_column(String(30), index=True)
+    entity_id: Mapped[str] = mapped_column(String(36), index=True)
+    classification: Mapped[str] = mapped_column(String(20))
+    effective_from: Mapped[date] = mapped_column(Date)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source: Mapped[str] = mapped_column(String(120))
+    evidence_ref: Mapped[str] = mapped_column(String(500))
+    provider_global_included: Mapped[bool | None] = mapped_column(Boolean, nullable=True)

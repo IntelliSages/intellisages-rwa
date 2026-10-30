@@ -23,15 +23,15 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [~] Define canonical entities/IDs for underlying, issuer, issuer product, network, deployment, venue, perp contract and provider alias.
 - [ ] Add effective-dated provider aliases, symbol/name aliases and contract migrations.
 - [~] Add representation type: independent issuance, bridge/wrapper or unknown.
-- [ ] Add economic-supply groups and evidence references.
-- [ ] Add versioned classification registry and provider-global inclusion evidence.
+- [~] Add effective-dated economic-supply groups/memberships with evidence references and explicit verification.
+- [~] Add versioned underlying/product classification and provider-global inclusion evidence.
 - [x] Add exact builder/domain/market identity for perpetual contracts.
 - [ ] Add registry import/reconciliation and unresolved mapping workflow.
 - [~] Test NVIDIA/NVDAx/NVDAon distinction, duplicate issuer-native IDs, EVM normalization, non-EVM case preservation and exact alias resolution.
 - [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
 - [x] Ensure unknown IDs return not found, never a default asset.
 
-**Current slice:** FastAPI + SQLAlchemy 2.x + Alembic, PostgreSQL target for shared environments, SQLite isolated to tests. PR #2 has passing frontend/backend CI but is not merged. Remaining EPIC 1 items are listed in docs/IDENTITY_REGISTRY.md.
+**Current baseline:** PR #2 is merged. Follow-on branch `feat/identity-supply-classification` adds economic-supply groups and effective-dated classification records; acceptance remains pending CI. Effective-dated provider aliases, contract migration history, spot/pool/loan-market identities, bulk reconciliation and access controls remain open.
 
 ## EPIC 2 — Provider adapters, rights and ingestion
 

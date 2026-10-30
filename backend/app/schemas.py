@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -85,4 +86,46 @@ class AliasCreate(StrictModel):
     evidence_ref: str | None = Field(default=None, max_length=500)
     is_verified: bool = False
 class AliasRead(AliasCreate):
+    id: str
+
+class SupplyGroupCreate(StrictModel):
+    canonical_key: str = Field(min_length=2, max_length=160, pattern=r"^[a-z0-9][a-z0-9._:-]*$")
+    display_name: str = Field(min_length=1, max_length=240)
+    methodology_notes: str = Field(min_length=1, max_length=1000)
+class SupplyGroupRead(SupplyGroupCreate):
+    id: str
+
+class SupplyMembershipCreate(StrictModel):
+    group_id: str
+    issuer_product_id: str
+    membership_type: Literal["native", "bridge", "wrapper"]
+    effective_from: date
+    effective_to: date | None = None
+    evidence_ref: str = Field(min_length=1, max_length=500)
+    is_verified: bool = False
+
+    @model_validator(mode="after")
+    def valid_period(self):
+        if self.effective_to is not None and self.effective_to <= self.effective_from:
+            raise ValueError("effective_to must be later than effective_from")
+        return self
+class SupplyMembershipRead(SupplyMembershipCreate):
+    id: str
+
+class ClassificationCreate(StrictModel):
+    entity_type: Literal["underlying", "issuer_product"]
+    entity_id: str
+    classification: Literal["crypto", "rwa", "other", "unknown"]
+    effective_from: date
+    effective_to: date | None = None
+    source: str = Field(min_length=1, max_length=120)
+    evidence_ref: str = Field(min_length=1, max_length=500)
+    provider_global_included: bool | None = None
+
+    @model_validator(mode="after")
+    def valid_period(self):
+        if self.effective_to is not None and self.effective_to <= self.effective_from:
+            raise ValueError("effective_to must be later than effective_from")
+        return self
+class ClassificationRead(ClassificationCreate):
     id: str
