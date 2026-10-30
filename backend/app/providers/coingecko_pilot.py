@@ -273,6 +273,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         "details_failed": len(detail_errors),
         "detail_errors": detail_errors,
         "issuer_list_count": len(issuer_rows),
+        "issuer_list_available": bool(issuer_rows),
         "issuer_list_error": issuer_list_error,
         "files": files,
         "provider_universe_scope": "CoinGecko-tracked RWA list at retrieval time; not the complete global tokenized-asset universe.",
@@ -407,12 +408,14 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
     issuer_list_path = output_dir / "issuers-list.json"
     issuer_list_rows = _read_json(issuer_list_path) if issuer_list_path.exists() else []
     for issuer_row in issuer_list_rows if isinstance(issuer_list_rows, list) else []:
-        if isinstance(issuer_row, dict) and isinstance(issuer_row.get("id"), str) and issuer_row.get("id") and isinstance(issuer_row.get("name"), str) and issuer_row.get("name").strip():
-            issuer_id = issuer_row["id"]
-            if len(issuer_id) > 220:
-                counters["issuer_id_out_of_range"] += 1
-            else:
-                issuer_sources.setdefault(issuer_id, (issuer_row["name"].strip()[:240], issuer_row, None))
+        if not isinstance(issuer_row, dict) or not isinstance(issuer_row.get("id"), str) or not issuer_row.get("id") or not isinstance(issuer_row.get("name"), str) or not issuer_row.get("name").strip():
+            counters["issuer_without_name"] += 1
+            continue
+        issuer_id = issuer_row["id"]
+        if len(issuer_id) > 220:
+            counters["issuer_id_out_of_range"] += 1
+        else:
+            issuer_sources.setdefault(issuer_id, (issuer_row["name"].strip()[:240], issuer_row, None))
     for issuer_id, (issuer_name, raw_issuer, source_rwa_id) in sorted(issuer_sources.items()):
         canonical = {
             "canonical_key": source_key("issuer", issuer_id),
@@ -658,6 +661,8 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
         "tokens_discovered": len(token_rows),
         "distinct_issuer_ids_in_token_details": len(issuer_ids),
         "distinct_issuer_ids_in_issuer_list": len(issuer_list_ids),
+        "issuer_list_available": issuer_list_path.exists(),
+        "issuer_list_error": manifest.get("issuer_list_error"),
         "issuer_ids_only_in_issuer_list": len(issuer_list_ids - issuer_ids),
         "issuer_ids_only_in_token_details": len(issuer_ids - issuer_list_ids),
         "tokens_without_issuer_id": tokens_missing_issuer,
