@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def new_id() -> str:
@@ -83,6 +83,43 @@ class PerpetualContract(Base):
     underlying_id: Mapped[str | None] = mapped_column(ForeignKey("underlying_assets.id"), nullable=True)
     issuer_product_id: Mapped[str | None] = mapped_column(ForeignKey("issuer_products.id"), nullable=True)
     venue: Mapped[Venue] = relationship()
+
+class PerpetualContractMigration(Base):
+    __tablename__ = "perpetual_contract_migrations"
+    __table_args__ = (
+        UniqueConstraint(
+            "predecessor_contract_id", "successor_contract_id", "event_type", "effective_at",
+            name="uq_perp_migration_edge_event_date",
+        ),
+        CheckConstraint(
+            "successor_contract_id IS NULL OR predecessor_contract_id <> successor_contract_id",
+            name="ck_perp_migration_not_self",
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    predecessor_contract_id: Mapped[str] = mapped_column(
+        ForeignKey("perpetual_contracts.id"), index=True
+    )
+    successor_contract_id: Mapped[str | None] = mapped_column(
+        ForeignKey("perpetual_contracts.id"), nullable=True, index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(30))
+    effective_at: Mapped[date] = mapped_column(Date)
+    previous_native_market_id: Mapped[str] = mapped_column(String(180))
+    new_native_market_id: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    previous_native_symbol: Mapped[str] = mapped_column(String(100))
+    new_native_symbol: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    source: Mapped[str] = mapped_column(String(120))
+    evidence_ref: Mapped[str] = mapped_column(String(500))
+    notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    predecessor: Mapped[PerpetualContract] = relationship(
+        foreign_keys=[predecessor_contract_id]
+    )
+    successor: Mapped[PerpetualContract | None] = relationship(
+        foreign_keys=[successor_contract_id]
+    )
+
 
 class ProviderAlias(Base):
     __tablename__ = "provider_aliases"

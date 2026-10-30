@@ -194,3 +194,134 @@ def test_provider_alias_cannot_be_closed_twice_or_before_its_start(client):
         json={"effective_to":"2026-07-01"},
     )
     assert repeated.status_code == 409
+
+
+
+def create_perpetual(client, venue, market_id, symbol, key, domain="", builder_id=None):
+    return client.post("/api/v1/registry/perpetual-contracts", json={
+        "canonical_key": key,
+        "venue_id": venue["id"],
+        "native_market_id": market_id,
+        "native_symbol": symbol,
+        "domain": domain,
+        "builder_id": builder_id,
+    })
+
+
+def test_perpetual_contract_migration_preserves_distinct_native_identities(client):
+    venue = client.post("/api/v1/registry/venues", json={
+        "canonical_key": "venue:hyperliquid", "display_name": "Hyperliquid", "venue_type": "perp_dex"
+    }).json()
+    predecessor = create_perpetual(
+        client, venue, "0x123", "NVDA-PERP", "perp:hl:nvda-old", domain="km", builder_id="km"
+    ).json()
+    successor = create_perpetual(
+        client, venue, "0x456", "NVDA-USD-PERP", "perp:hl:nvda-new", domain="km", builder_id="km"
+    ).json()
+    assert predecessor["id"] != successor["id"]
+    created = client.post("/api/v1/registry/perpetual-contract-migrations", json={
+        "predecessor_contract_id": predecessor["id"],
+        "successor_contract_id": successor["id"],
+        "event_type": "market_id_changed",
+        "effective_at": "2026-07-01",
+        "source": "official_venue_notice",
+        "evidence_ref": "https://venue.example/market-migration",
+        "is_verified": True,
+    })
+    assert created.status_code == 201
+    assert created.json()["predecessor_contract_id"] == predecessor["id"]
+    assert created.json()["successor_contract_id"] == successor["id"]
+    listed = client.get("/api/v1/registry/perpetual-contract-migrations")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+    # The migration is a relationship record; it does not rewrite either contract.
+    contracts = {item["id"]: item for item in client.get("/api/v1/registry/perpetual-contracts").json()}
+    assert contracts[predecessor["id"]]["native_market_id"] == "0x123"
+    assert contracts[successor["id"]]["native_market_id"] == "0x456"
+    assert contracts[predecessor["id"]]["domain"] == contracts[successor["id"]]["domain"] == "km"
+
+
+def test_perpetual_contract_migration_rejects_cycles_and_self_links(client):
+    venue = client.post("/api/v1/registry/venues", json={
+        "canonical_key": "venue:hyperliquid", "display_name": "Hyperliquid", "venue_type": "perp_dex"
+    }).json()
+    first = create_perpetual(client, venue, "1", "A-PERP", "perp:a").json()
+    second = create_perpetual(client, venue, "2", "A2-PERP", "perp:a2").json()
+    third = create_perpetual(client, venue, "3", "A3-PERP", "perp:a3").json()
+
+    def migration(source, target, date_value):
+        return {
+            "predecessor_contract_id": source,
+            "successor_contract_id": target,
+            "event_type": "replaced",
+            "effective_at": date_value,
+            "source": "venue_notice",
+            "evidence_ref": "notice-123",
+        }
+
+    assert client.post("/api/v1/registry/perpetual-contract-migrations", json=migration(first["id"], second["id"], "2026-01-01")).status_code == 201
+    assert client.post("/api/v1/registry/perpetual-contract-migrations", json=migration(second["id"], third["id"], "2026-02-01")).status_code == 201
+    cycle = client.post("/api/v1/registry/perpetual-contract-migrations", json=migration(third["id"], first["id"], "2026-03-01"))
+    assert cycle.status_code == 409
+    self_link = client.post("/api/v1/registry/perpetual-contract-migrations", json=migration(first["id"], first["id"], "2026-04-01"))
+    assert self_link.status_code == 422
+
+
+def test_perpetual_symbol_change_preserves_old_and_new_native_symbol_without_new_contract(client):
+    venue = client.post("/api/v1/registry/venues", json={
+        "canonical_key": "venue:hyperliquid", "display_name": "Hyperliquid", "venue_type": "perp_dex"
+    }).json()
+    contract = create_perpetual(
+        client, venue, "0x123", "NVDA-PERP", "perp:hl:nvda", domain="km", builder_id="km"
+    ).json()
+    response = client.post("/api/v1/registry/perpetual-contract-migrations", json={
+        "predecessor_contract_id": contract["id"],
+        "successor_contract_id": None,
+        "event_type": "symbol_changed",
+        "effective_at": "2026-09-01",
+        "new_native_symbol": "NVDA-USD-PERP",
+        "source": "official_venue_notice",
+        "evidence_ref": "symbol-change-notice",
+    })
+    assert response.status_code == 201
+    event = response.json()
+    assert event["previous_native_market_id"] == event["new_native_market_id"] == "0x123"
+    assert event["previous_native_symbol"] == "NVDA-PERP"
+    assert event["new_native_symbol"] == "NVDA-USD-PERP"
+    assert client.get("/api/v1/registry/perpetual-contracts").json()[0]["native_symbol"] == "NVDA-PERP"
+
+
+def test_perpetual_contract_delisting_is_terminal_and_evidence_bearing(client):
+    venue = client.post("/api/v1/registry/venues", json={
+        "canonical_key": "venue:kraken", "display_name": "Kraken", "venue_type": "centralized_exchange"
+    }).json()
+    contract = create_perpetual(client, venue, "PI_XBTUSD", "XBT/USD:USD", "perp:kraken:xbt").json()
+    payload = {
+        "predecessor_contract_id": contract["id"],
+        "successor_contract_id": None,
+        "event_type": "delisted",
+        "effective_at": "2026-08-01",
+        "source": "official_venue_notice",
+        "evidence_ref": "notice-delisting",
+    }
+    created = client.post("/api/v1/registry/perpetual-contract-migrations", json=payload)
+    assert created.status_code == 201
+    assert created.json()["successor_contract_id"] is None
+    invalid = {**payload, "successor_contract_id": contract["id"]}
+    assert client.post("/api/v1/registry/perpetual-contract-migrations", json=invalid).status_code == 422
+    missing_successor = {**payload, "event_type": "replaced"}
+    assert client.post("/api/v1/registry/perpetual-contract-migrations", json=missing_successor).status_code == 422
+
+
+def test_perpetual_contract_migration_requires_existing_contracts_and_evidence(client):
+    payload = {
+        "predecessor_contract_id": "missing",
+        "successor_contract_id": "missing-too",
+        "event_type": "replaced",
+        "effective_at": "2026-01-01",
+        "source": "venue",
+        "evidence_ref": "notice",
+    }
+    assert client.post("/api/v1/registry/perpetual-contract-migrations", json=payload).status_code == 404
+    del payload["evidence_ref"]
+    assert client.post("/api/v1/registry/perpetual-contract-migrations", json=payload).status_code == 422
