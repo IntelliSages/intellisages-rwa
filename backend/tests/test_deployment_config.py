@@ -12,7 +12,6 @@ from app.database import (
     ensure_alembic_version_column_length,
     normalise_database_url,
 )
-from migrations.env import ExtendedVersionTableImpl
 
 
 def test_postgres_urls_use_psycopg_v3():
