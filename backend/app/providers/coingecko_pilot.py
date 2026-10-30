@@ -423,7 +423,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         canonical = {
             "canonical_key": source_key("issuer", issuer_id),
             # This is a provider-reported issuer label, not proof of the legal entity's registered name.
-            "legal_name": issuer_name.strip()[:240],
+            "provider_name": issuer_name.strip()[:240],
         }
         rows.append({
             "entity_type": "issuer", "source_namespace": "issuer_id", "external_id": issuer_id,
