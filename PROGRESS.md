@@ -164,3 +164,12 @@ PR #8 frontend pull-request and push jobs failed in the Vitest step only. Depend
 Root cause from both job logs: `tests/tokenized-rwa-screener.test.tsx` used `screen.getByText(/NVDAx/)`, which became ambiguous after the screener correctly added an anchor to the canonical detail route while retaining the symbol label. The test now asserts the accessible link name and exact destination `/tokenized-rwa-screener/product-a`, and separately verifies the issuer text. This preserves the intended navigation behaviour instead of suppressing the duplicate-match failure.
 
 Vercel preview deployment for the feature branch completed with state READY. This confirms the frontend build/deploy path, not backend connectivity or full application data readiness.
+
+
+## 15. Sprint 3 CI remediation confirmed — 2026-10-30
+
+- Root cause: frontend test used an ambiguous text query `getByText(/NVDAx/)` after the product name became a canonical detail link and remained alongside the symbol label.
+- Correction: test now asserts the accessible link by role/name and exact route `/tokenized-rwa-screener/product-a`, plus the issuer display.
+- CI rerun on commit `66f66f78b15ef5b3e1ef8106fcea4a977559f0e7` completed successfully: Backend quality passed; Frontend quality passed dependency installation, ESLint, TypeScript, Vitest and Next.js production build.
+- The original failing run is superseded by the successful PR-triggered run `40999586576`. Vercel Preview Comments passed.
+- The Vercel preview deployment is READY for the PR head. Backend hosting/configuration remains a separate dependency; a successful frontend preview does not make the API live.
