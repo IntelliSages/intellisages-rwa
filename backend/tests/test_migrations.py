@@ -166,7 +166,6 @@ def test_postgres_fresh_database_uses_extended_alembic_version_table(tmp_path, m
     from sqlalchemy.engine import make_url
 
     from app.database import ALEMBIC_VERSION_NUM_LENGTH
-    from migrations.env import ExtendedVersionTableImpl
 
     database_url = os.getenv("TEST_POSTGRES_URL")
     if not database_url:
