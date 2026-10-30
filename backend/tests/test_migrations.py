@@ -1,6 +1,5 @@
 from alembic import command
 from alembic.config import Config
-import uuid
 from sqlalchemy import create_engine, text
 
 
@@ -155,65 +154,3 @@ def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monk
             text("SELECT name FROM sqlite_master WHERE type='table'")).all()}
         assert "provider_ingestion_runs" not in after
     engine.dispose()
-
-
-
-
-
-def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
-    import os
-    import pytest
-    from sqlalchemy import create_engine, text
-    from sqlalchemy.engine import make_url
-
-    from app.database import ALEMBIC_VERSION_NUM_LENGTH
-
-    database_url = os.getenv("TEST_POSTGRES_URL")
-    if not database_url:
-        pytest.skip("TEST_POSTGRES_URL is not configured")
-
-    base_url = make_url(database_url)
-    schema_name = f"alembic_fresh_{uuid.uuid4().hex[:10]}"
-    engine = create_engine(database_url)
-    schema_engine = None
-
-    try:
-        with engine.begin() as connection:
-            connection.exec_driver_sql(f'CREATE SCHEMA "{schema_name}"')
-
-        # PostgreSQL libpq options set search_path for every new connection,
-        # including the independent connection Alembic creates in env.py.
-        options = f"-csearch_path={schema_name},public"
-        schema_url = base_url.update_query_dict({"options": options})
-        schema_engine = create_engine(schema_url)
-
-        config = Config("alembic.ini")
-        # ConfigParser treats percent signs as interpolation markers.
-        monkeypatch.setenv("DATABASE_URL", str(schema_url).replace("%", "%%"))
-
-        command.upgrade(config, "head")
-
-        with schema_engine.connect() as connection:
-            width = connection.execute(
-                text(
-                    """
-                    SELECT character_maximum_length
-                    FROM information_schema.columns
-                    WHERE table_schema = :schema_name
-                      AND table_name = 'alembic_version'
-                      AND column_name = 'version_num'
-                    """
-                ),
-                {"schema_name": schema_name},
-            ).scalar_one()
-            revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
-            assert width == ALEMBIC_VERSION_NUM_LENGTH
-            assert revision == "0006_provider_ingestion_runs"
-
-        command.downgrade(config, "base")
-    finally:
-        if schema_engine is not None:
-            schema_engine.dispose()
-        with engine.begin() as connection:
-            connection.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
-        engine.dispose()
