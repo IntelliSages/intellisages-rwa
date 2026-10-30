@@ -14,7 +14,6 @@ ENTITY_MODELS = {
     "underlying": models.UnderlyingAsset,
     "issuer": models.Issuer,
     "network": models.Network,
-    "network": models.Network,
     "issuer_product": models.IssuerProduct,
     "deployment": models.Deployment,
     "venue": models.Venue,
