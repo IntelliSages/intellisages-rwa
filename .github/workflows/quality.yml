@@ -67,11 +67,11 @@ jobs:
       - name: Test backend
         working-directory: backend
         run: pytest -q
-      - name: Verify database migration
+      - name: Verify PostgreSQL migrations
         working-directory: backend
         env:
-          DATABASE_URL: sqlite:///./migration-check.db
+          DATABASE_URL: ${{ env.TEST_POSTGRES_URL }}
+          APP_ENV: production
         run: |
           alembic upgrade head
           alembic downgrade base
-          rm -f migration-check.db
