@@ -533,6 +533,7 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
                 token_id, source_hash, underlying_rwa_id=rwa_id,
                 source_retrieved_at=manifest.get("detail_retrieved_at", {}).get(rwa_id, manifest["retrieved_at"]),
                 issuer_id=issuer_id, issuer_name=issuer.get("name"),
+                native_product_id_semantics="CoinGecko RWA token ID used as a provisional provider-native identifier; not asserted to be the issuer's internal product ID.",
             )),
         })
         counters["products_stageable"] += 1

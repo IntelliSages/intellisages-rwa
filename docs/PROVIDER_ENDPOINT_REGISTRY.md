@@ -109,6 +109,6 @@ The current pilot adapter uses:
 
 The official CoinGecko RWA API guide states that a Demo API key is required and that the free Demo plan supports the list/detail discovery workflow. Ticker liquidity and historical market-chart endpoints are not used by this registry importer; those require paid access according to the guide. See https://www.coingecko.com/learn/tokenized-rwa-data-api-guide (updated 26 Oct 2026).
 
-The adapter stores raw provider responses locally with SHA-256 hashes, per-record checkpointing, retry handling and retrieval timestamps. It stages only; it does not approve canonical records. Provider issuer labels are not legal-identity proof. Platform-to-CAIP-2 mappings are explicit and unknown platform slugs remain unresolved. Token contract/mint entries are staged as unverified deployments.
+The adapter stores raw provider responses locally with SHA-256 hashes, per-record checkpointing, retry handling and retrieval timestamps. It stages only; it does not approve canonical records. Provider issuer labels are not legal-identity proof. CoinGecko token IDs are provisional provider-native product identifiers, not asserted issuer-internal IDs. Platform-to-CAIP-2 mappings are explicit and unknown platform slugs remain unresolved. Token contract/mint entries are staged as unverified deployments.
 
 Coverage is reported against CoinGecko's tracked RWA list at retrieval time. It must not be described as complete global tokenized-asset coverage.

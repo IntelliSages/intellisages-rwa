@@ -171,7 +171,7 @@ python -m app.providers.coingecko_pilot stage \\
   --phase products --submitted-by 'operator@your-company'
 \`\`\`
 
-Each product is scoped by issuer + CoinGecko token ID and linked to the canonical underlying. Symbol equality is never used as an identity key. The unit description explicitly leaves legal entitlement and conversion ratio unknown.
+Each product is scoped by canonical issuer + CoinGecko token ID and linked to the canonical underlying. The CoinGecko token ID is explicitly recorded as a provisional provider-native product identifier; it is not represented as the issuer's internal product ID. Symbol equality is never used as an identity key. The unit description explicitly leaves legal entitlement and conversion ratio unknown.
 
 ### 5. Approve products and stage deployments
 
