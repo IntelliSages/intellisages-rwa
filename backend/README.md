@@ -86,3 +86,122 @@ Matching is source-aware and exact: active provider aliases, canonical keys, iss
 Batch payloads preserve the original source row as JSON. Audit events record staging, duplicate detection, approval and rejection; there is no update/delete API for audit events. Imports create canonical issuer products and deployments only after review. Product and deployment rows must reference already-existing canonical parent IDs, so import dependencies should be staged/reviewed in order (underlyings and issuers, then products, then deployments).
 
 The import endpoints are administrative and intentionally do not provide a public upload UI. Configure authentication, authorization, secret rotation, audit retention and operational monitoring before connecting them to any shared or production environment. Evidence references are pointers supplied by the reviewer; the API does not independently validate the legal or factual claims at those URLs.
+
+
+## CoinGecko RWA pilot: snapshot → staged import → human reconciliation
+
+The initial provider adapter uses CoinGecko's dedicated RWA API as a **discovery source**. The provider exposes a tracked RWA list, per-underlying detail with issuer tokens and platform addresses, and an issuer list. The issuer list is corroborating/optional; issuer details embedded in each RWA response are also captured. This pipeline measures CoinGecko's tracked universe only, not every tokenized asset in the market.
+
+Official provider guide: https://www.coingecko.com/learn/tokenized-rwa-data-api-guide  
+Relevant endpoints:
+- \`GET /api/v3/rwas/list\` — provider-tracked underlying list.
+- \`GET /api/v3/rwas/{id}?tokens=true\` — underlying detail, issuer tokens and platform-address mappings.
+- \`GET /api/v3/rwas/issuers/list\` — optional issuer-list cross-check.
+
+### Configure credentials
+
+Obtain a CoinGecko Demo or Pro API key and configure it in the local shell or secret manager. Never commit it, add it to a snapshot, or paste it into a chat.
+
+\`\`\`bash
+export COINGECKO_API_KEY='your-key'
+export COINGECKO_BASE_URL='https://api.coingecko.com/api/v3'
+export RWA_API_BASE_URL='http://127.0.0.1:8000'
+export REGISTRY_ADMIN_TOKEN='the-same-server-side-registry-admin-token'
+\`\`\`
+
+The adapter uses the Demo key header for the public API host and the Pro key header for the Pro API host. It uses Python's standard library; no additional runtime dependency is required.
+
+### 1. Fetch a resumable raw snapshot
+
+Run from the \`backend/\` directory:
+
+\`\`\`bash
+python -m app.providers.coingecko_pilot snapshot \\
+  --output-dir data/provider_snapshots/coingecko/2026-10-30
+\`\`\`
+
+The full provider list is used by default. For a small smoke test only, add \`--limit 10\`; a limited snapshot can never be reported as full coverage. The adapter:
+- saves the raw list, optional issuer list and each per-RWA detail response;
+- checkpoints after every detail call and resumes matching snapshots;
+- spaces requests conservatively (default 2.1 seconds), retries 429 and transient 5xx/network failures, and caps each response at 5 MB;
+- records failed IDs, source timestamps, endpoint references, response hashes and a manifest;
+- never stores the API key in the snapshot.
+
+Raw snapshots are excluded from Git by \`.gitignore\`. Use a new output directory for each new provider snapshot once staging has begun; staged snapshots are immutable.
+
+### 2. Stage underlyings and issuers
+
+\`\`\`bash
+python -m app.providers.coingecko_pilot stage \\
+  --snapshot-dir data/provider_snapshots/coingecko/2026-10-30 \\
+  --phase foundations --submitted-by 'operator@your-company'
+\`\`\`
+
+This creates review batches for underlying assets and distinct provider-reported issuers. The legacy \`legal_name\` field receives CoinGecko's issuer label, explicitly marked in source metadata as **not independently verified legal identity**. A reviewer must verify the correct legal entity using issuer/official evidence before approving it.
+
+### 3. Stage network identities
+
+\`\`\`bash
+python -m app.providers.coingecko_pilot stage \\
+  --snapshot-dir data/provider_snapshots/coingecko/2026-10-30 \\
+  --phase networks --submitted-by 'operator@your-company'
+\`\`\`
+
+The adapter includes only explicit platform-to-chain mappings (Ethereum, BNB Smart Chain, Polygon PoS, Arbitrum One, Base, Optimism, Avalanche C-Chain and Solana). Unknown CoinGecko platform slugs are reported and are not guessed. Add verified mappings using a JSON object keyed by the exact provider platform slug, then rerun the phase:
+
+\`\`\`json
+{
+  "provider-platform-slug": {
+    "namespace": "eip155:12345",
+    "display_name": "Verified Chain Name",
+    "family": "evm"
+  }
+}
+\`\`\`
+
+Use the actual canonical chain namespace and family; the example values above are illustrative, not a real network mapping.
+
+### 4. Approve foundations and stage issuer products
+
+Inspect the unresolved queue with \`GET /api/v1/registry/imports/queue\`. Approve or reject each row using the evidence-led decision endpoint documented above. Products are not staged until both the exact CoinGecko RWA ID and issuer ID have active, verified provider aliases.
+
+\`\`\`bash
+python -m app.providers.coingecko_pilot stage \\
+  --snapshot-dir data/provider_snapshots/coingecko/2026-10-30 \\
+  --phase products --submitted-by 'operator@your-company'
+\`\`\`
+
+Each product is scoped by issuer + CoinGecko token ID and linked to the canonical underlying. Symbol equality is never used as an identity key. The unit description explicitly leaves legal entitlement and conversion ratio unknown.
+
+### 5. Approve products and stage deployments
+
+After product review, the token IDs have verified provider aliases. Stage deployments only after the platform/network aliases are also approved:
+
+\`\`\`bash
+python -m app.providers.coingecko_pilot stage \\
+  --snapshot-dir data/provider_snapshots/coingecko/2026-10-30 \\
+  --phase deployments --submitted-by 'operator@your-company'
+\`\`\`
+
+A deployment is keyed by canonical network + normalized native address/mint. Imported deployments remain \`is_verified=false\` and \`representation_type=unknown\`; a provider platform address is not proof of issuer control, backing, bridge equivalence or legal rights.
+
+### 6. Reconcile and review coverage
+
+After reviewing all staged records:
+
+\`\`\`bash
+python -m app.providers.coingecko_pilot reconcile \\
+  --snapshot-dir data/provider_snapshots/coingecko/2026-10-30
+\`\`\`
+
+The command writes \`coverage.json\` and updates the persistent \`provider_ingestion_runs\` record. It reports:
+- provider RWA list count and detail success/failure ratio;
+- issuer-list vs token-level issuer ID differences;
+- token/product count, platform-contract entries and unsupported platform slugs;
+- staged batches and per-entity review status;
+- unresolved parent mappings, rejected/duplicate rows and remaining review queue;
+- whether all four phases are complete.
+
+A run is only marked completed when the full provider list was requested, every detail succeeded, all four phases are complete, all review decisions are resolved, and no unsupported platform or unresolved parent mapping remains. Otherwise it stays partial/awaiting review. Completion means reconciliation against CoinGecko's tracked dataset—not proof of total market coverage.
+
+The importer only stages records. It never creates or verifies canonical entities automatically. All canonical records and provider aliases continue through human approval with evidence. A CoinGecko-reported issuer name must not be presented as a verified legal entity without independent evidence.

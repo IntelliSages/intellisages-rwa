@@ -192,6 +192,7 @@ def test_phased_pipeline_waits_for_approved_parents_and_can_resume_partial_phase
     from app.providers.coingecko_pilot import stage_phase
 
     manifest = fetch_snapshot(tmp_path, FakeCoinGecko())
+    assert manifest["details_succeeded"] == 1
     api = FakeRegistry()
 
     foundations = stage_phase(tmp_path, "foundations", "operator", api)
@@ -232,7 +233,7 @@ def test_phased_pipeline_waits_for_approved_parents_and_can_resume_partial_phase
         _approved_alias("platform_slug", "unknown-chain", "network", "network-unknown"),
     ])
     deployments = stage_phase(tmp_path, "deployments", "operator", api, custom_map)
-    assert deployments["eligible_rows"] == 3
+    assert deployments["eligible_rows"] == 4
     assert deployments["counters"]["unresolved_product_alias"] == 0
     assert deployments["counters"]["unresolved_network_alias"] == 0
 
