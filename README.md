@@ -85,3 +85,54 @@ RWA_API_BASE_URL=http://127.0.0.1:8000 npm run dev
 ```
 
 The same variable can be placed in `.env.local` (copy `.env.example`). The browser calls a same-origin Next.js proxy; the backend URL is not exposed as a public client-side environment variable. The API currently serves registered identity/classification records only. It does not ingest market observations or prove provider-universe completeness.
+
+
+## Deploy the API to Render with PostgreSQL
+
+The repository includes a Render Blueprint at `render.yaml`. The current starter configuration uses Render's **Free** Python web service and Free PostgreSQL in Frankfurt. This is intended for development and early validation, not production data.
+
+### Provisioning (free tier)
+
+1. In Render, choose **New → Blueprint** and connect `IntelliSages/intellisages-rwa`.
+2. Select the `feat/render-postgres-deployment` branch while reviewing this change, or `main` after it is merged.
+3. Confirm that both the web service and PostgreSQL database show the **Free** plan before applying. Do not select a paid plan or add a payment method for this setup.
+4. Apply the Blueprint. Render creates `intellisages-rwa-db` and `intellisages-rwa-api`; the database connection string is injected internally and is never committed to Git.
+5. The free web service runs Alembic migrations at startup, then starts FastAPI. The service is ready only when `/healthz` returns HTTP 200 and reports `database: connected`.
+
+### Free-tier limitations
+
+- Free web services spin down after 15 minutes without inbound traffic; the first request after idle can take about a minute to wake up.
+- The free web service has an ephemeral filesystem. Do not store durable uploads or SQLite production data there.
+- Free Render PostgreSQL is limited to 1 GB, has no backups, and expires 30 days after creation. Export data before expiry; after expiry there is a 14-day upgrade window before deletion.
+- Treat this database as disposable development data. Do not import the 1,093 staged review records or any important production data into it.
+- Render can restart free services and databases; this setup is not suitable for production availability or durable records.
+
+See [Render's free-tier limitations](https://render.com/docs/free) before provisioning.
+
+### Required backend secrets
+
+The Blueprint intentionally does not create a registry admin token or CoinGecko API key. Add secrets in the Render service's Environment page only when needed:
+
+- `REGISTRY_ADMIN_TOKEN`: a long, randomly generated secret for the protected import/review API. Keep it server-side; never add it to Vercel or browser code.
+- `COINGECKO_API_KEY`: optional, only for running the provider snapshot client from a trusted operator environment.
+
+Import administration remains disabled (HTTP 503) until `REGISTRY_ADMIN_TOKEN` is configured. Do not expose import/review routes through the public frontend.
+
+### Connect Vercel
+
+After Render reports the API service as Live, copy its HTTPS service URL (for example, `https://intellisages-rwa-api.onrender.com`). In the Vercel project `intellisages-rwa`, add the server-only environment variable:
+
+```text
+RWA_API_BASE_URL=https://<your-render-service>.onrender.com
+```
+
+Apply it to Preview and Production, then redeploy the frontend. The existing Next.js route handler proxies catalogue requests server-side; browser requests remain same-origin and no CORS wildcard is required. Do not prefix this variable with `NEXT_PUBLIC_`.
+
+### Database and release safety
+
+- Render's managed PostgreSQL is the persistent source of truth; the local SQLite database is not copied or used in production.
+- Alembic runs before each new web-service deployment. A failed migration prevents the new version from being promoted to serving traffic.
+- The health check verifies both process and database connectivity.
+- PostgreSQL URLs supplied as `postgres://` or `postgresql://` are normalized to the installed psycopg v3 driver.
+- Backups, point-in-time recovery and retention depend on the selected Render database plan; confirm the current plan's backup policy before importing production review data.
+- The initial Render database is empty. Existing local staged CoinGecko review batches are not automatically copied; migrate/export/import them through a separately reviewed, authenticated data-transfer procedure. Do not copy a local SQLite file into production.
