@@ -73,5 +73,5 @@ jobs:
           DATABASE_URL: ${{ env.TEST_POSTGRES_URL }}
           APP_ENV: production
         run: |
-          alembic upgrade head
+          alembic -x verify_schema=true upgrade head
           alembic downgrade base
