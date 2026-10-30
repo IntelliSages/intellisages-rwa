@@ -154,3 +154,41 @@ def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monk
             text("SELECT name FROM sqlite_master WHERE type='table'")).all()}
         assert "provider_ingestion_runs" not in after
     engine.dispose()
+
+
+
+def test_pre_migration_inspection_transaction_is_closed_before_upgrade(tmp_path):
+    from app.database import commit_pre_migration_transaction
+
+    database_path = tmp_path / "pre-migration-transaction.db"
+    database_url = f"sqlite:///{database_path}"
+    engine = create_engine(database_url)
+
+    # A diagnostic SELECT autobegins a transaction in SQLAlchemy 2.x.
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+        assert connection.in_transaction()
+
+        commit_pre_migration_transaction(connection)
+        assert not connection.in_transaction()
+
+        # Alembic can now own and commit its migration transaction.
+        with connection.begin():
+            connection.execute(
+                text("CREATE TABLE migration_transaction_probe (id INTEGER PRIMARY KEY)")
+            )
+
+    # Closing the connection must not roll back the migration's DDL.
+    with engine.connect() as connection:
+        table = connection.execute(
+            text(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table' AND name = 'migration_transaction_probe'
+                """
+            )
+        ).scalar_one_or_none()
+        assert table == "migration_transaction_probe"
+
+    engine.dispose()

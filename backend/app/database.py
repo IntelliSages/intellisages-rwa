@@ -17,6 +17,17 @@ def normalise_database_url(value: str) -> str:
     return value
 
 
+def commit_pre_migration_transaction(connection) -> None:
+    """Close SQLAlchemy's autobegun transaction before Alembic takes ownership.
+
+    Database inspection queries run before Alembic starts. Under SQLAlchemy 2.x,
+    those queries autobegin a transaction; Alembic will not commit a transaction
+    it did not create.
+    """
+    if connection.in_transaction():
+        connection.commit()
+
+
 def ensure_alembic_version_column_length(connection) -> bool:
     """Widen an existing Alembic version table before version updates.
 
