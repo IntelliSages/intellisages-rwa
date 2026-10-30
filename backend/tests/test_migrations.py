@@ -162,8 +162,6 @@ def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monk
 
 def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
     import os
-    from urllib.parse import quote
-
     import pytest
     from sqlalchemy import create_engine, text
     from sqlalchemy.engine import make_url
