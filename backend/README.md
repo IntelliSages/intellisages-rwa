@@ -137,7 +137,7 @@ python -m app.providers.coingecko_pilot stage \\
   --phase foundations --submitted-by 'operator@your-company'
 \`\`\`
 
-This creates review batches for underlying assets and distinct provider-reported issuers. The legacy \`legal_name\` field receives CoinGecko's issuer label, explicitly marked in source metadata as **not independently verified legal identity**. A reviewer must verify the correct legal entity using issuer/official evidence before approving it.
+This creates review batches for underlying assets and distinct provider-reported issuers. The legacy \`legal_name\` field receives CoinGecko's issuer label, explicitly marked in source metadata as **not independently verified legal identity**. A reviewer must verify the correct legal entity using issuer/official evidence before approving it. The decision API accepts an audited `canonical_payload_override` for `create_new`, so the reviewer can replace the provider label with the independently confirmed legal name; the original source payload remains preserved.
 
 ### 3. Stage network identities
 

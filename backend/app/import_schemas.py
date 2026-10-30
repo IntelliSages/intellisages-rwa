@@ -24,6 +24,7 @@ class ImportDecision(ImportStrictModel):
     evidence_ref: str | None = Field(default=None, min_length=1, max_length=500)
     target_entity_id: str | None = Field(default=None, min_length=1, max_length=36)
     note: str | None = Field(default=None, max_length=1000)
+    canonical_payload_override: dict[str, Any] | None = None
 
 class ImportCandidateRead(BaseModel):
     id: str

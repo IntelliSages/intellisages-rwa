@@ -274,6 +274,8 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
     payload = _canonical_payload(json.loads(record.raw_payload_json))
 
     if decision.action == "reject":
+        if decision.canonical_payload_override is not None:
+            raise HTTPException(status_code=422, detail="Canonical payload overrides are only valid when creating a new entity.")
         if not decision.note:
             raise HTTPException(status_code=422, detail="A rejection note is required.")
         record.status, record.decision_note = "rejected", decision.note
@@ -283,6 +285,8 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
         if not decision.evidence_ref:
             raise HTTPException(status_code=422, detail="Evidence reference is required before approving a mapping.")
         if decision.action == "link_existing":
+            if decision.canonical_payload_override is not None:
+                raise HTTPException(status_code=422, detail="Canonical payload overrides cannot be used when linking an existing entity.")
             if not decision.target_entity_id:
                 raise HTTPException(status_code=422, detail="target_entity_id is required to link an existing entity.")
             target = db.get(ENTITY_MODELS[record.entity_type], decision.target_entity_id)
@@ -291,7 +295,10 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
             target_id, method = target.id, "human_approved_existing_link"
         else:
             try:
-                clean = CREATE_SCHEMAS[record.entity_type].model_validate(payload)
+                create_payload = dict(payload)
+                if decision.canonical_payload_override:
+                    create_payload.update(decision.canonical_payload_override)
+                clean = CREATE_SCHEMAS[record.entity_type].model_validate(create_payload)
             except ValidationError as exc:
                 raise HTTPException(status_code=422, detail={
                     "message": "Imported payload does not satisfy canonical entity requirements.",
@@ -335,7 +342,8 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
         record.reviewed_by, record.reviewed_at = decision.reviewer, _now()
         _audit(db, batch.id, decision.reviewer, "record_approved", {
             "action": decision.action, "entity_type": record.entity_type, "entity_id": target_id,
-            "resolution_method": method, "evidence_ref": decision.evidence_ref}, record.id)
+            "resolution_method": method, "evidence_ref": decision.evidence_ref,
+            "canonical_payload_override": decision.canonical_payload_override or {}}, record.id)
 
     _refresh_batch_status(db, batch)
     try:
