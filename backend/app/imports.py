@@ -101,9 +101,13 @@ def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
                 _candidate(db, record, record.entity_type, item.id, "exact_canonical_key", 1.0)
         field = "display_name" if record.entity_type == "underlying" else "legal_name"
         name = payload.get(field)
+        match_basis = "exact_name_not_unique_identity"
+        if record.entity_type == "issuer" and isinstance(payload.get("provider_name"), str):
+            name = payload["provider_name"]
+            match_basis = "provider_name_not_unique_identity"
         if isinstance(name, str) and name:
             for item in db.scalars(select(model).where(func.lower(getattr(model, field)) == name.lower())).all():
-                _candidate(db, record, record.entity_type, item.id, "exact_name_not_unique_identity", 0.55)
+                _candidate(db, record, record.entity_type, item.id, match_basis, 0.55)
     elif record.entity_type == "network":
         namespace = payload.get("namespace")
         if isinstance(namespace, str) and namespace:
@@ -296,6 +300,10 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
         else:
             try:
                 create_payload = dict(payload)
+                if record.entity_type == "issuer":
+                    # CoinGecko's provider_name is a discovery label, never a legal-name default.
+                    # A create_new decision must supply an independently evidenced legal_name.
+                    create_payload.pop("provider_name", None)
                 if decision.canonical_payload_override:
                     create_payload.update(decision.canonical_payload_override)
                 clean = CREATE_SCHEMAS[record.entity_type].model_validate(create_payload)
