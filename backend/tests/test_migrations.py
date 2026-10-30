@@ -1,5 +1,6 @@
 from alembic import command
 from alembic.config import Config
+import uuid
 from sqlalchemy import create_engine, text
 
 
