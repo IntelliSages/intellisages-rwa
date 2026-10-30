@@ -27,7 +27,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [~] Add effective-dated economic-supply groups/memberships with evidence references and explicit verification.
 - [~] Add versioned underlying/product classification and provider-global inclusion evidence.
 - [x] Add exact builder/domain/market identity for perpetual contracts.
-- [ ] Add registry import/reconciliation and unresolved mapping workflow.
+- [x] Implement staged registry import/reconciliation API, source-aware candidates, unresolved review queue, evidence-gated approval/rejection and append-only audit trail (Sprint 4 implementation; merge and CI evidence pending).
 - [~] Test NVIDIA/NVDAx/NVDAon distinction, duplicate issuer-native IDs, EVM normalization, non-EVM case preservation and exact alias resolution.
 - [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
 - [x] Ensure unknown IDs return not found, never a default asset.

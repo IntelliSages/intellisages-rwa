@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def new_id() -> str:
@@ -165,3 +165,60 @@ class ProductClassification(Base):
     source: Mapped[str] = mapped_column(String(120))
     evidence_ref: Mapped[str] = mapped_column(String(500))
     provider_global_included: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+
+class RegistryImportBatch(Base):
+    __tablename__ = "registry_import_batches"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    source: Mapped[str] = mapped_column(String(100), index=True)
+    source_version: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    submitted_by: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(30), default="staged", index=True)
+    total_records: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RegistryImportRecord(Base):
+    __tablename__ = "registry_import_records"
+    __table_args__ = (UniqueConstraint("batch_id", "row_number", name="uq_import_record_batch_row"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("registry_import_batches.id", ondelete="CASCADE"), index=True)
+    row_number: Mapped[int] = mapped_column(Integer)
+    entity_type: Mapped[str] = mapped_column(String(40), index=True)
+    source_namespace: Mapped[str] = mapped_column(String(100))
+    external_id: Mapped[str] = mapped_column(String(220))
+    raw_payload_json: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="needs_review", index=True)
+    resolution_method: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    resolved_entity_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    resolved_entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class RegistryImportCandidate(Base):
+    __tablename__ = "registry_import_candidates"
+    __table_args__ = (UniqueConstraint("import_record_id", "candidate_entity_type", "candidate_entity_id", name="uq_import_candidate_entity"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    import_record_id: Mapped[str] = mapped_column(ForeignKey("registry_import_records.id", ondelete="CASCADE"), index=True)
+    candidate_entity_type: Mapped[str] = mapped_column(String(40))
+    candidate_entity_id: Mapped[str] = mapped_column(String(36))
+    match_basis: Mapped[str] = mapped_column(String(80))
+    confidence: Mapped[float] = mapped_column(Float)
+    evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class RegistryImportAuditEvent(Base):
+    __tablename__ = "registry_import_audit_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    batch_id: Mapped[str] = mapped_column(ForeignKey("registry_import_batches.id", ondelete="CASCADE"), index=True)
+    import_record_id: Mapped[str | None] = mapped_column(ForeignKey("registry_import_records.id", ondelete="SET NULL"), nullable=True, index=True)
+    actor: Mapped[str] = mapped_column(String(160))
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    details_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

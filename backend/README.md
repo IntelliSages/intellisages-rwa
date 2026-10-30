@@ -68,3 +68,21 @@ Important semantics:
 - Price, tokenized value, supply, volume, liquidity and return history are not included because validated observation services do not yet exist.
 
 This is a read-only catalogue route, not permission to expose the current unauthenticated registry mutation routes publicly.
+
+
+## Staged registry imports and reconciliation
+
+All import administration routes require X-Registry-Admin-Token; configure the server-only REGISTRY_ADMIN_TOKEN secret before use. If it is absent, the import API returns 503 and remains disabled. Never put this token in frontend code or expose it to a browser.
+
+- POST /api/v1/registry/imports stages a batch of up to 500 records. Each row carries an entity type, source namespace, source-native external ID and source payload.
+- GET /api/v1/registry/imports lists recent batches.
+- GET /api/v1/registry/imports/queue lists unresolved records and their candidates.
+- GET /api/v1/registry/imports/{batch_id} reads a batch and its rows.
+- GET /api/v1/registry/imports/{batch_id}/audit reads append-only audit events.
+- POST /api/v1/registry/imports/records/{record_id}/decision supports link_existing, create_new and reject.
+
+Matching is source-aware and exact: active provider aliases, canonical keys, issuer + native product ID, and network + normalized deployment identifier. Name and symbol equality can surface weak candidates but never authorizes an automatic link. Every row remains pending until a reviewer decides. Approval requires a reviewer identity and evidence reference; accepted source identifiers are written as verified provider aliases in the same database transaction. Rejected rows require a reason. Repeated source identities within one batch are retained and marked duplicate rather than silently dropped.
+
+Batch payloads preserve the original source row as JSON. Audit events record staging, duplicate detection, approval and rejection; there is no update/delete API for audit events. Imports create canonical issuer products and deployments only after review. Product and deployment rows must reference already-existing canonical parent IDs, so import dependencies should be staged/reviewed in order (underlyings and issuers, then products, then deployments).
+
+The import endpoints are administrative and intentionally do not provide a public upload UI. Configure authentication, authorization, secret rotation, audit retention and operational monitoring before connecting them to any shared or production environment. Evidence references are pointers supplied by the reviewer; the API does not independently validate the legal or factual claims at those URLs.
