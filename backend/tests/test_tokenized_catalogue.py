@@ -239,3 +239,62 @@ def test_catalogue_validates_sort_and_page_bounds(client):
         "/api/v1/catalogue/tokenized-products", params={"limit": 500}
     )
     assert invalid_limit.status_code == 422
+
+
+
+def test_product_detail_resolves_exact_canonical_id_and_returns_provenance(client):
+    _, _, product = create_product(
+        client, issuer_key="issuer:alpha", issuer_name="Alpha Issuer", product_id="NVDAx"
+    )
+    network = client.post(
+        "/api/v1/registry/networks",
+        json={"namespace": "eip155:1", "display_name": "Ethereum", "family": "evm"},
+    ).json()
+    deployment = client.post(
+        "/api/v1/registry/deployments",
+        json={
+            "issuer_product_id": product["id"],
+            "network_id": network["id"],
+            "native_identifier": "0x" + "a" * 40,
+            "is_verified": True,
+        },
+    )
+    assert deployment.status_code == 201
+
+    response = client.get(f"/api/v1/catalogue/tokenized-products/{product['id']}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == product["id"]
+    assert payload["issuer"]["legal_name"] == "Alpha Issuer"
+    assert payload["underlying"]["display_name"] == "NVIDIA"
+    assert payload["classification"]["evidence_ref"] == "evidence:classification:approved"
+    assert payload["deployments"][0]["is_verified"] is True
+    assert payload["unverified_deployment_count"] == 0
+
+
+def test_product_detail_does_not_resolve_symbols_or_non_rwa_records(client):
+    _, issuer, product = create_product(
+        client, issuer_key="issuer:alpha", issuer_name="Alpha Issuer", product_id="NVDAx"
+    )
+    symbol_lookup = client.get("/api/v1/catalogue/tokenized-products/NVDA")
+    unknown_lookup = client.get("/api/v1/catalogue/tokenized-products/not-a-real-id")
+    assert symbol_lookup.status_code == 404
+    assert unknown_lookup.status_code == 404
+
+    # The product exists, but its RWA classification is no longer effective.
+    client.post(
+        "/api/v1/registry/classifications",
+        json={
+            "entity_type": "issuer_product",
+            "entity_id": product["id"],
+            "classification": "other",
+            "effective_from": "2027-01-01",
+            "source": "classification review",
+            "evidence_ref": "evidence:reclassification",
+        },
+    )
+    future = client.get(
+        f"/api/v1/catalogue/tokenized-products/{product['id']}",
+        params={"as_of": "2027-01-01"},
+    )
+    assert future.status_code == 404
