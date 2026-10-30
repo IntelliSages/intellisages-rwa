@@ -18,11 +18,11 @@ def normalise_database_url(value: str) -> str:
 
 
 def ensure_alembic_version_column_length(connection) -> bool:
-    """Widen the exact Alembic version table resolved by PostgreSQL search_path.
+    """Widen an existing Alembic version table before version updates.
 
-    Resolve the same unqualified relation name Alembic uses, then alter it by
-    its explicit schema-qualified name. This avoids changing unrelated schemas
-    and guarantees that the table Alembic will update is the one verified here.
+    Alembic 1.16.1 hardcodes String(32) in its default version-table
+    implementation. This helper widens an already-created table. Fresh
+    databases are handled by the custom Alembic DefaultImpl in migrations/env.py.
     """
     if connection.dialect.name != "postgresql":
         return False
@@ -38,7 +38,6 @@ def ensure_alembic_version_column_length(connection) -> bool:
         """
     ).scalar_one_or_none()
 
-    # On a fresh database Alembic creates this table using version_num_length.
     if schema is None:
         return False
 
