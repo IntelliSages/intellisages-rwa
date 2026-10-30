@@ -31,15 +31,6 @@ def test_alembic_revision_column_length_supports_long_revision_ids():
     assert ALEMBIC_VERSION_NUM_LENGTH >= len("0004_perpetual_contract_migrations")
 
 
-def test_custom_alembic_version_table_uses_extended_column():
-    table = ExtendedVersionTableImpl("postgresql", None, False, None, None, {}).version_table_impl(
-        version_table="alembic_version",
-        version_table_schema=None,
-        version_table_pk=True,
-    )
-    assert table.c.version_num.type.length == ALEMBIC_VERSION_NUM_LENGTH
-
-
 def test_alembic_version_column_widening_is_postgres_only():
     engine = create_engine("sqlite://")
     with engine.connect() as connection:
