@@ -103,8 +103,6 @@ class PerpetualMigrationCreate(StrictModel):
                 raise ValueError("A symbol change requires the new native symbol.")
         elif not terminal_event and self.successor_contract_id is None:
             raise ValueError("This migration event requires a successor contract.")
-        if self.event_type != "symbol_changed" and self.new_native_symbol is not None:
-            raise ValueError("new_native_symbol is only supplied for a symbol-only change.")
         if self.successor_contract_id == self.predecessor_contract_id:
             raise ValueError("A perpetual contract cannot migrate to itself.")
         return self
