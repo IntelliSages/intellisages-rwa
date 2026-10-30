@@ -114,7 +114,10 @@ See [Render's free-tier limitations](https://render.com/docs/free) before provis
 The Blueprint intentionally does not create a registry admin token or CoinGecko API key. Add secrets in the Render service's Environment page only when needed:
 
 - `REGISTRY_ADMIN_TOKEN`: a long, randomly generated secret for the protected import/review API. Keep it server-side; never add it to Vercel or browser code.
-- `COINGECKO_API_KEY`: optional, only for running the provider snapshot client from a trusted operator environment.
+- `COINGECKO_API_KEY`: required on the backend API service for scheduled live RWA market refreshes. Never place it in Vercel or a public frontend variable.
+- `COINGECKO_REFRESH_ADMIN_TOKEN`: a separate random secret used by the controlled refresh endpoint. Configure the same value as a GitHub Actions repository secret; the CoinGecko API key is never sent to GitHub Actions.
+
+The repository workflow `.github/workflows/coingecko-refresh.yml` triggers the backend refresh every five minutes. Configure GitHub Actions repository secrets `RWA_API_BASE_URL` and `COINGECKO_REFRESH_ADMIN_TOKEN`. GitHub scheduled runs are best-effort. The backend persists the raw CoinGecko pages and normalized snapshots.
 
 Import administration remains disabled (HTTP 503) until `REGISTRY_ADMIN_TOKEN` is configured. Do not expose import/review routes through the public frontend.
 

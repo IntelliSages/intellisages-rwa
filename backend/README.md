@@ -205,3 +205,29 @@ The command writes \`coverage.json\` and updates the persistent \`provider_inges
 A run is only marked completed when the full provider list was requested, every detail succeeded, all four phases are complete, all review decisions are resolved, and no unsupported platform or unresolved parent mapping remains. Otherwise it stays partial/awaiting review. Completion means reconciliation against CoinGecko's tracked dataset—not proof of total market coverage.
 
 The importer only stages records. It never creates or verifies canonical entities automatically. All canonical records and provider aliases continue through human approval with evidence. A CoinGecko-reported issuer name must not be presented as a verified legal entity without independent evidence.
+
+## CoinGecko RWA market-data refresh
+
+The discovery importer above stages identity records for human review. Market snapshots use a separate ingestion path and do not create, approve, or relabel canonical entities.
+
+- Source: `GET /rwas/list` plus paginated `GET /rwas/markets` (maximum 250 rows/page).
+- Market fields: USD current price, market cap, 24h volume, 24h change and 7d change where CoinGecko returns them.
+- Raw page responses are stored with SHA-256, endpoint/page and retrieval timestamp. Normalized observations are append-only and linked to the refresh run.
+- Runs are marked complete or partial against the provider RWA list. Failed refreshes do not delete prior observations.
+- Frontend association is allowed only through an active, independently verified CoinGecko `rwa_id` provider alias targeting a canonical underlying. CoinGecko's aggregated underlying metrics are never relabelled as issuer-product prices.
+- Liquidity/tickers and historical RWA charts are not included; CoinGecko documents those endpoints as paid-plan features. Missing values remain null.
+
+Configure `COINGECKO_API_KEY` and `COINGECKO_BASE_URL` only on the backend. Configure a separate random `COINGECKO_REFRESH_ADMIN_TOKEN` for controlled refresh requests. Never put either secret in the Next.js public environment.
+
+Scheduled refresh is provided by `.github/workflows/coingecko-refresh.yml` every five minutes (and can be triggered manually). Configure these GitHub repository Actions secrets:
+
+- `RWA_API_BASE_URL`: the backend API base URL, without a trailing slash.
+- `COINGECKO_REFRESH_ADMIN_TOKEN`: the same random server-side refresh token configured on the backend.
+
+The workflow sends only an authenticated refresh request; the CoinGecko API key remains exclusively on the backend. GitHub scheduled workflows are best-effort and can be delayed. For a dedicated persistent worker instead, run `python -m app.providers.coingecko_refresh_worker` as one separate background process; do not run it in every API replica. Apply migrations before starting the API/worker:
+
+```bash
+alembic upgrade head
+```
+
+The public read endpoint is `GET /api/v1/market-data/coingecko/rwa/verified-underlyings`. Controlled synchronous refresh is `POST /api/v1/market-data/coingecko/rwa/refresh` with the `X-CoinGecko-Refresh-Token` header. The frontend consumes the same-origin Next.js proxy `/api/market-data/coingecko/rwa`.
