@@ -247,3 +247,20 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [ ] Stage deployments after approved product/network mappings; keep deployment verification false pending evidence.
 - [ ] Complete reconciliation and coverage review; record provider coverage limitations.
 - [ ] Merge the implementation PR after CI and live pilot evidence are reviewed.
+
+
+## EPIC 2A — CoinGecko RWA market-data vertical slice
+
+- [x] Fetch the CoinGecko-tracked RWA universe and paginated aggregate RWA market data.
+- [x] Persist immutable raw page payloads with endpoint, retrieval timestamp and SHA-256.
+- [x] Persist normalized USD market observations and provider update timestamps.
+- [x] Preserve complete/partial/failed run states and explicit missing/duplicate coverage.
+- [x] Add controlled refresh API protected by a server-side token.
+- [x] Add a dedicated persistent worker process with configurable interval.
+- [x] Expose observations only for verified canonical underlying aliases.
+- [x] Add same-origin frontend proxy and visible market-data/freshness panel.
+- [x] Keep underlying aggregate metrics distinct from issuer-product price/value metrics.
+- [ ] Validate backend lint/tests and PostgreSQL migration upgrade/downgrade in CI.
+- [ ] Validate frontend ESLint, TypeScript, unit tests and production build in CI.
+- [ ] Configure backend API and one persistent worker deployment with server-side secrets.
+- [ ] Run a live refresh and verify non-zero records, coverage and freshness from the deployed frontend.
