@@ -1,4 +1,3 @@
-from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
