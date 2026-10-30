@@ -186,3 +186,35 @@ Validated PR head: `47d9ba0d580f65688206bb4a6b9000deebd7c5e1`.
 - Vercel deployment for the validated head: READY; preview comments report zero unresolved feedback.
 - No open inline review threads or review submissions were returned for PR #8.
 - The initial red checks were caused by one ambiguous Testing Library text query following intentional link navigation; the test was corrected to assert the canonical link route.
+
+
+## 17. Sprint 4 — Registry import & reconciliation (implementation branch)
+
+Branch: feat/registry-import-reconciliation, based on merged PR #8 commit 34208d88dcf427556541a54e291a651a53972885.
+
+Implemented scope:
+- Staged bulk import batches for underlying assets, issuers, issuer products and deployments (up to 500 source records per batch).
+- Source-aware exact matching against active provider aliases, canonical keys, issuer + native product ID, and network + normalized deployment identifier.
+- Weak exact-name and symbol candidates are labelled and cannot auto-resolve records. All rows remain in the human review queue, including exact provider-alias matches.
+- Duplicate source identities in a batch are retained and marked as duplicates rather than silently dropped.
+- Evidence-required reviewer decisions to link an existing canonical entity or create a new canonical entity; rejection requires a reason.
+- Approved source identifiers are registered as verified provider aliases within the approval transaction.
+- Append-only audit events for staged rows, duplicate detection, approval and rejection.
+- Import API disabled unless a server-side REGISTRY_ADMIN_TOKEN is configured; requests require X-Registry-Admin-Token. The token must never be sent to browser code.
+- Alembic migration 0005_registry_import_reconciliation adds batch, record, candidate and audit tables.
+
+Validation status: final implementation commit `5a9b91ede61b8b5d5197fd3d6cba72ebace9f655` passed both push workflow `41046236485` and pull-request workflow `41046247755`. Backend Ruff passed; 50 pytest tests passed; Alembic upgrade and downgrade passed. Frontend dependency installation, ESLint, TypeScript, Vitest and Next.js production build passed. Vercel Preview Comments passed with zero unresolved feedback. PR #9 remains open and awaits review/merge. No provider feed is connected and no live data has been imported. This increment does not implement identity-provider-backed authentication, role provisioning, audit retention controls, provider rights validation or a browser upload UI.
+
+
+## 18. Sprint 4 — final CI verification — 2026-10-30
+
+Validated PR #9 head: `5a9b91ede61b8b5d5197fd3d6cba72ebace9f655`.
+
+- Push quality workflow `41046236485`: completed successfully.
+- Pull-request quality workflow `41046247755`: completed successfully.
+- Backend: Ruff passed; 50 pytest tests passed; Alembic upgrade and downgrade passed.
+- Frontend: dependency installation, ESLint, TypeScript, Vitest and Next.js production build passed.
+- Vercel Preview Comments passed; no unresolved feedback was reported.
+- PR #9 is open and unmerged. Merge remains a product-owner action.
+- The first test run exposed duplicate candidate rows and stale batch status due to disabled SQLAlchemy autoflush. Candidate deduplication now preserves all match signals, and the status/count queries explicitly flush before reading. The final test run covers these cases, alias approval, parent-reference validation, duplicate rows, payload limits, and deployment normalization.
+- The admin import API remains disabled until a server-side `REGISTRY_ADMIN_TOKEN` is configured. The supplied reviewer label is not an authenticated user identity; production use still requires identity-provider integration and role-based authorization.

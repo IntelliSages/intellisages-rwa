@@ -27,7 +27,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [~] Add effective-dated economic-supply groups/memberships with evidence references and explicit verification.
 - [~] Add versioned underlying/product classification and provider-global inclusion evidence.
 - [x] Add exact builder/domain/market identity for perpetual contracts.
-- [ ] Add registry import/reconciliation and unresolved mapping workflow.
+- [~] Implement staged registry import/reconciliation API, source-aware candidates, unresolved review queue, evidence-gated approval/rejection and append-only audit trail (PR #9 implementation and CI validated; awaiting merge).
 - [~] Test NVIDIA/NVDAx/NVDAon distinction, duplicate issuer-native IDs, EVM normalization, non-EVM case preservation and exact alias resolution.
 - [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
 - [x] Ensure unknown IDs return not found, never a default asset.
@@ -210,3 +210,21 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [x] Vercel preview deployment completed successfully.
 - [ ] Confirm latest head check-suite status and final PR review before merge.
 - [ ] Deploy protected backend API and validate end-to-end detail route; Vercel preview currently validates frontend deployment only.
+
+
+## SPRINT 4 — Registry Import & Reconciliation
+
+- [x] Stage bulk import batches for underlying assets, issuers, issuer products and deployments (maximum 500 rows; payload size bounded).
+- [x] Match exact provider aliases, canonical keys, issuer-scoped native product IDs and network-normalized deployment identifiers.
+- [x] Surface exact-name and symbol-only candidates as weak evidence; never auto-resolve any candidate.
+- [x] Provide a bounded unresolved review queue and batch/record inspection endpoints.
+- [x] Require reviewer identity label and evidence reference to approve; support link-existing and create-new decisions.
+- [x] Require a reason to reject; prevent repeat decisions and serialize concurrent decisions with row locking where supported.
+- [x] Create or promote provider aliases as verified only after an evidence-backed human approval.
+- [x] Record staged, duplicate, approved and rejected actions in append-only audit history.
+- [x] Protect import endpoints with a server-side admin token; fail closed when it is not configured.
+- [x] Add migration and tests for duplicate matching, source aliases, symbol-only ambiguity, approval/rejection, parent references, payload limits, and deployment normalization.
+- [x] Pass backend Ruff, 50 pytest tests, Alembic upgrade/downgrade; pass frontend ESLint, TypeScript, Vitest and production build on the final PR head.
+- [ ] Merge PR #9 into main.
+- [ ] Configure a production-grade identity provider/role authorization and secret management before enabling shared-environment import access.
+- [ ] Connect an entitled provider source and execute a reviewed pilot import; reconcile actual imported rows and source coverage before declaring data ingestion ready.
