@@ -284,13 +284,24 @@ def test_provider_run_coverage_is_persisted_and_completed_runs_are_immutable(cli
     })
     assert created.status_code == 201
     run_id = created.json()["id"]
+    invalid_completion = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "completed", "coverage": {"provider_rwa_list_count": 647}
+    })
+    assert invalid_completion.status_code == 409
+    complete_coverage = {
+        "provider_rwa_list_count": 647, "details": 647,
+        "all_pipeline_phases_staged": True, "full_provider_list_requested": True,
+        "detail_failure_count": 0, "unsupported_platform_slugs": [],
+        "unresolved_parent_mappings": 0, "review_queue_remaining": 0,
+        "phase_status": {"foundations": "complete", "networks": "complete",
+                         "products": "complete", "deployments": "complete"},
+    }
     updated = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
-        "status": "completed", "coverage": {"provider_rwa_list_count": 647, "details": 647},
-        "staged_batch_ids": ["batch-a", "batch-b"]
+        "status": "completed", "coverage": complete_coverage,
+        "staged_batch_ids": []
     })
     assert updated.status_code == 200
     assert updated.json()["coverage"]["details"] == 647
-    assert updated.json()["staged_batch_ids"] == ["batch-a", "batch-b"]
     assert client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
         "status": "partial"
     }).status_code == 409

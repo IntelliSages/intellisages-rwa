@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import import_schemas, models
@@ -52,6 +52,34 @@ def update_provider_run(run_id: str, payload: import_schemas.ProviderRunUpdate,
     if run.status == "completed":
         raise HTTPException(status_code=409, detail="Completed provider ingestion runs are immutable.")
     data = payload.model_dump(exclude_unset=True)
+    next_coverage = data.get("coverage")
+    if next_coverage is None:
+        next_coverage = json.loads(run.coverage_json)
+    if data.get("status") == "completed":
+        required_phases = {"foundations", "networks", "products", "deployments"}
+        phase_status = next_coverage.get("phase_status", {})
+        if (
+            next_coverage.get("all_pipeline_phases_staged") is not True
+            or set(phase_status) < required_phases
+            or any(phase_status.get(name) != "complete" for name in required_phases)
+            or next_coverage.get("full_provider_list_requested") is not True
+            or next_coverage.get("detail_failure_count", 0) != 0
+            or next_coverage.get("unsupported_platform_slugs", [])
+            or next_coverage.get("unresolved_parent_mappings", 0) != 0
+            or next_coverage.get("review_queue_remaining", 0) != 0
+        ):
+            raise HTTPException(status_code=409, detail="Provider run cannot complete: full provider coverage, all four complete phases, zero detail failures, no unresolved mappings and an empty review queue are required.")
+        staged_ids = data.get("staged_batch_ids") or json.loads(run.staged_batch_ids_json)
+        for batch_id in staged_ids:
+            batch = db.get(models.RegistryImportBatch, batch_id)
+            if batch is None or batch.source != run.provider:
+                raise HTTPException(status_code=409, detail="Provider run references a missing batch or a batch from another source.")
+            pending = db.scalar(select(func.count(models.RegistryImportRecord.id)).where(
+                models.RegistryImportRecord.batch_id == batch_id,
+                models.RegistryImportRecord.status == "needs_review",
+            )) or 0
+            if pending:
+                raise HTTPException(status_code=409, detail="Provider run cannot complete while staged records remain unresolved.")
     if "coverage" in data and data["coverage"] is not None:
         run.coverage_json = json.dumps(data.pop("coverage"), sort_keys=True, separators=(",", ":"))
     if "staged_batch_ids" in data and data["staged_batch_ids"] is not None:

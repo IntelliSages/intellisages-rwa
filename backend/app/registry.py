@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/v1/registry", tags=["identity registry"])
 ENTITY_MODELS = {
     "underlying": models.UnderlyingAsset,
     "issuer": models.Issuer,
+    "network": models.Network,
     "issuer_product": models.IssuerProduct,
     "deployment": models.Deployment,
     "venue": models.Venue,
