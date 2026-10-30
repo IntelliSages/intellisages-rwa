@@ -71,6 +71,20 @@ def _canonical_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return canonical if isinstance(canonical, dict) else payload
 
 
+def _is_provider_issuer_label(payload: dict[str, Any]) -> bool:
+    """Identify provider labels that must not be persisted as canonical legal names."""
+    canonical = _canonical_payload(payload)
+    metadata = payload.get("source_metadata", {}) if isinstance(payload, dict) else {}
+    semantics = metadata.get("name_semantics", "") if isinstance(metadata, dict) else ""
+    return (
+        isinstance(canonical.get("provider_name"), str)
+        or (
+            isinstance(semantics, str)
+            and "legal identity requires independent review" in semantics.lower()
+        )
+    )
+
+
 def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:
     network = db.get(models.Network, payload.get("network_id"))
     if network is None:
@@ -80,6 +94,7 @@ def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:
 
 def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
                          record: models.RegistryImportRecord, payload: dict[str, Any]):
+    provider_issuer_label = record.entity_type == "issuer" and _is_provider_issuer_label(payload)
     payload = _canonical_payload(payload)
     aliases = db.scalars(select(models.ProviderAlias).where(
         models.ProviderAlias.provider == batch.source,
@@ -102,8 +117,8 @@ def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
         field = "display_name" if record.entity_type == "underlying" else "legal_name"
         name = payload.get(field)
         match_basis = "exact_name_not_unique_identity"
-        if record.entity_type == "issuer" and isinstance(payload.get("provider_name"), str):
-            name = payload["provider_name"]
+        if provider_issuer_label:
+            name = payload.get("provider_name") or payload.get("legal_name")
             match_basis = "provider_name_not_unique_identity"
         if isinstance(name, str) and name:
             for item in db.scalars(select(model).where(func.lower(getattr(model, field)) == name.lower())).all():
@@ -275,7 +290,9 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
     if record.status != "needs_review":
         raise HTTPException(status_code=409, detail=f"Import record is already {record.status}.")
     batch = db.get(models.RegistryImportBatch, record.batch_id)
-    payload = _canonical_payload(json.loads(record.raw_payload_json))
+    record_payload = json.loads(record.raw_payload_json)
+    payload = _canonical_payload(record_payload)
+    provider_issuer_label = record.entity_type == "issuer" and _is_provider_issuer_label(record_payload)
 
     if decision.action == "reject":
         if decision.canonical_payload_override is not None:
@@ -301,9 +318,11 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
             try:
                 create_payload = dict(payload)
                 if record.entity_type == "issuer":
-                    # CoinGecko's provider_name is a discovery label, never a legal-name default.
-                    # A create_new decision must supply an independently evidenced legal_name.
+                    # Provider labels are discovery data, never canonical legal-name defaults.
+                    # This also protects legacy staged rows that stored the label in legal_name.
                     create_payload.pop("provider_name", None)
+                    if provider_issuer_label:
+                        create_payload.pop("legal_name", None)
                 if decision.canonical_payload_override:
                     create_payload.update(decision.canonical_payload_override)
                 clean = CREATE_SCHEMAS[record.entity_type].model_validate(create_payload)
