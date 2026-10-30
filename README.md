@@ -89,15 +89,25 @@ The same variable can be placed in `.env.local` (copy `.env.example`). The brows
 
 ## Deploy the API to Render with PostgreSQL
 
-The repository includes a Render Blueprint at `render.yaml`. It provisions a persistent PostgreSQL 16 database and a Python web service in Frankfurt, connects them over Render's private network, runs Alembic migrations as a pre-deploy step, and checks database readiness at `/healthz`.
+The repository includes a Render Blueprint at `render.yaml`. The current starter configuration uses Render's **Free** Python web service and Free PostgreSQL in Frankfurt. This is intended for development and early validation, not production data.
 
-### Provisioning
+### Provisioning (free tier)
 
 1. In Render, choose **New → Blueprint** and connect `IntelliSages/intellisages-rwa`.
 2. Select the `feat/render-postgres-deployment` branch while reviewing this change, or `main` after it is merged.
-3. Review the Blueprint resources and the current Render pricing before applying. The configuration uses a Starter web service and Basic PostgreSQL database so the API does not sleep and the database is persistent. These are paid Render resources.
-4. Apply the Blueprint. Render creates `intellisages-rwa-db` and `intellisages-rwa-api`. The database connection string is injected internally; it is never committed to Git.
-5. Wait for the pre-deploy migration and health check to pass. The service is ready only when `/healthz` returns HTTP 200 and reports `database: connected`.
+3. Confirm that both the web service and PostgreSQL database show the **Free** plan before applying. Do not select a paid plan or add a payment method for this setup.
+4. Apply the Blueprint. Render creates `intellisages-rwa-db` and `intellisages-rwa-api`; the database connection string is injected internally and is never committed to Git.
+5. The free web service runs Alembic migrations at startup, then starts FastAPI. The service is ready only when `/healthz` returns HTTP 200 and reports `database: connected`.
+
+### Free-tier limitations
+
+- Free web services spin down after 15 minutes without inbound traffic; the first request after idle can take about a minute to wake up.
+- The free web service has an ephemeral filesystem. Do not store durable uploads or SQLite production data there.
+- Free Render PostgreSQL is limited to 1 GB, has no backups, and expires 30 days after creation. Export data before expiry; after expiry there is a 14-day upgrade window before deletion.
+- Treat this database as disposable development data. Do not import the 1,093 staged review records or any important production data into it.
+- Render can restart free services and databases; this setup is not suitable for production availability or durable records.
+
+See [Render's free-tier limitations](https://render.com/docs/free) before provisioning.
 
 ### Required backend secrets
 
