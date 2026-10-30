@@ -183,3 +183,61 @@ def test_exact_unverified_provider_alias_requires_human_approval_and_is_promoted
     aliases = [a for a in client.get("/api/v1/registry/aliases").json() if a["external_id"] == "nvda-feed"]
     assert len(aliases) == 1 and aliases[0]["is_verified"] is True
     assert aliases[0]["evidence_ref"] == "https://issuer.example/asset-identity"
+
+
+
+def test_issuer_scoped_native_product_id_is_an_exact_candidate(client):
+    underlying = client.post("/api/v1/registry/underlyings", json={
+        "canonical_key": "equity:nvidia", "display_name": "NVIDIA", "asset_type": "equity"}).json()
+    issuer = client.post("/api/v1/registry/issuers", json={
+        "canonical_key": "issuer:ondo", "legal_name": "Ondo"}).json()
+    product = client.post("/api/v1/registry/products", json={
+        "canonical_key": "product:ondo:nvdax", "issuer_id": issuer["id"],
+        "underlying_id": underlying["id"], "native_product_id": "NVDAx",
+        "display_name": "NVDAx", "symbol": "NVDA", "instrument_form": "tokenized_equity",
+        "unit_description": "one token"}).json()
+    batch = stage(client, [row("issuer_product", "source-nvdax", {
+        "canonical_key": "product:incoming:nvdax", "issuer_id": issuer["id"],
+        "underlying_id": underlying["id"], "native_product_id": "NVDAx",
+        "display_name": "NVDAx token", "symbol": "NVDA", "instrument_form": "tokenized_equity",
+        "unit_description": "one token"}, "native-product-id")]).json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    assert any(c["match_basis"] == "exact_issuer_native_product_id"
+               and c["candidate_entity_id"] == product["id"] for c in record["candidates"])
+    assert record["status"] == "needs_review"
+
+
+def test_deployment_import_creates_normalized_record_only_after_approval(client):
+    underlying = client.post("/api/v1/registry/underlyings", json={
+        "canonical_key": "equity:nvidia", "display_name": "NVIDIA", "asset_type": "equity"}).json()
+    issuer = client.post("/api/v1/registry/issuers", json={
+        "canonical_key": "issuer:ondo", "legal_name": "Ondo"}).json()
+    product = client.post("/api/v1/registry/products", json={
+        "canonical_key": "product:ondo:nvdax", "issuer_id": issuer["id"],
+        "underlying_id": underlying["id"], "native_product_id": "NVDAx",
+        "display_name": "NVDAx", "instrument_form": "tokenized_equity",
+        "unit_description": "one token"}).json()
+    network = client.post("/api/v1/registry/networks", json={
+        "namespace": "eip155:1", "display_name": "Ethereum", "family": "evm"}).json()
+    address = "0x" + "A" * 40
+    batch = stage(client, [row("deployment", "nvda-deployment-1", {
+        "issuer_product_id": product["id"], "network_id": network["id"],
+        "native_identifier": address, "representation_type": "independent_issuance",
+        "is_verified": False}, "contract-address")]).json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    assert record["status"] == "needs_review"
+    decision = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "create_new", "reviewer": "reviewer", "evidence_ref": "evidence:deployment"})
+    assert decision.status_code == 200
+    deployments = client.get("/api/v1/registry/deployments").json()
+    created = [item for item in deployments if item["native_identifier"] == address]
+    assert len(created) == 1 and created[0]["normalized_identifier"] == address.lower()
+    assert created[0]["is_verified"] is False
+
+
+def test_oversized_import_payload_is_rejected_without_creating_batch(client):
+    response = stage(client, [row("underlying", "large-row", {
+        "canonical_key": "equity:large", "display_name": "X" * 50_100, "asset_type": "equity"
+    }, "asset-id")])
+    assert response.status_code == 413
+    assert client.get("/api/v1/registry/imports").json() == []
