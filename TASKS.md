@@ -187,3 +187,16 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [ ] Pass frontend dependency install, ESLint, TypeScript, unit tests and Next.js production build on final commit.
 - [ ] Pass both push and pull-request workflows on the exact final commit before marking the PR ready.
 - [ ] Connect a protected/shared backend deployment and validate live catalogue requests after access-control review.
+
+
+## FRONTEND SPRINT 3 — Canonical tokenized product detail
+
+- [x] Add exact-ID backend detail lookup for effective RWA-classified issuer products.
+- [x] Return issuer, underlying, classification provenance and product-level deployments.
+- [x] Return 404 for unknown IDs, ticker/symbol lookups and non-effective RWA classifications.
+- [x] Add same-origin frontend API proxy for product detail.
+- [x] Add canonical product detail route and screener navigation links.
+- [x] Keep market metrics explicitly unavailable until validated observations exist.
+- [ ] Pass backend Ruff, pytest and Alembic upgrade/downgrade on the final commit.
+- [ ] Pass frontend ESLint, TypeScript, Vitest and Next.js production build on the final commit.
+- [ ] Pass both push and pull-request workflows on the exact final commit before review.
