@@ -54,7 +54,6 @@ def run_migrations_offline():
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        user_module_prefix="",
         version_table_impl=ExtendedVersionTableImpl,
     )
     with context.begin_transaction():
