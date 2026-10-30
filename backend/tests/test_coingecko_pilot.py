@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from app.providers.coingecko_pilot import (
     DEFAULT_NETWORK_MAP,
     build_deployment_rows,
@@ -59,7 +57,7 @@ def test_snapshot_fetches_real_endpoint_shapes_and_writes_resumable_raw_files(tm
     assert manifest["details_succeeded"] == 1
     assert manifest["details_failed"] == 0
     assert (tmp_path / "rwas-list.json").exists()
-    assert (tmp_path / "details" / "nvidia.json").exists()
+    assert (tmp_path / "details" / next((p.name for p in (tmp_path / "details").glob("*.json")))).exists()
     assert manifest["manifest_sha256"] and len(manifest["manifest_sha256"]) == 64
     # A second run with the same RWA list reuses the saved detail, rather than refetching it.
     second = fetch_snapshot(tmp_path, client)
@@ -71,7 +69,7 @@ def test_foundations_create_underlyings_and_deduplicated_issuers_with_provenance
     client = FakeCoinGecko()
     manifest = fetch_snapshot(tmp_path, client)
     rwa_list = __import__("json").loads((tmp_path / "rwas-list.json").read_text())
-    details = {"nvidia": __import__("json").loads((tmp_path / "details" / "nvidia.json").read_text())}
+    details = {"nvidia": __import__("json").loads(next((tmp_path / "details").glob("*.json")).read_text())}
     rows, counters = build_foundation_rows(tmp_path, manifest, rwa_list, details)
     assert counters["underlyings"] == 1
     assert counters["issuers"] == 2
@@ -141,3 +139,106 @@ def test_coverage_labels_provider_scope_not_global_market_completeness(tmp_path)
     assert coverage["provider_rwa_list_count"] == 1
     assert coverage["full_provider_list_requested"] is True
     assert "not proof of complete market coverage" in coverage["coverage_warning"]
+
+
+
+class FakeRegistry:
+    def __init__(self):
+        self.aliases = []
+        self.batches = {}
+        self.run = None
+        self.next_batch = 1
+
+    def get_aliases(self):
+        return list(self.aliases)
+
+    def stage_rows(self, rows, submitted_by, source_version):
+        batch_id = f"batch-{self.next_batch}"
+        self.next_batch += 1
+        self.batches[batch_id] = {
+            "batch": {"id": batch_id, "status": "reviewing"},
+            "records": [{"entity_type": row["entity_type"], "status": "needs_review",
+                         "source_namespace": row["source_namespace"], "external_id": row["external_id"]}
+                        for row in rows],
+        }
+        return [{"id": batch_id, "total_records": len(rows)}]
+
+    def get_batch(self, batch_id):
+        return self.batches[batch_id]
+
+    def request(self, method, path, payload=None):
+        if method == "POST" and path == "/api/v1/registry/provider-runs":
+            self.run = {"id": "provider-run-1", **payload, "staged_batch_ids": []}
+            return self.run
+        if method == "GET" and path == "/api/v1/registry/provider-runs/provider-run-1":
+            return self.run
+        if method == "PATCH" and path.endswith("/provider-run-1"):
+            self.run.update(payload)
+            self.run["staged_batch_ids"] = list(dict.fromkeys(
+                self.run.get("staged_batch_ids", []) + payload.get("staged_batch_ids", [])
+            ))
+            return self.run
+        raise AssertionError((method, path, payload))
+
+
+def _approved_alias(namespace, external_id, entity_type, entity_id):
+    from datetime import date
+    return {"provider": "coingecko", "namespace": namespace, "external_id": external_id,
+            "entity_type": entity_type, "entity_id": entity_id, "is_verified": True,
+            "effective_from": date.today().isoformat(), "effective_to": None}
+
+
+def test_phased_pipeline_waits_for_approved_parents_and_can_resume_partial_phases(tmp_path):
+    from app.providers.coingecko_pilot import stage_phase
+
+    manifest = fetch_snapshot(tmp_path, FakeCoinGecko())
+    api = FakeRegistry()
+
+    foundations = stage_phase(tmp_path, "foundations", "operator", api)
+    assert foundations["eligible_rows"] == 3
+    assert foundations["run_id"] == "provider-run-1"
+
+    # Products cannot be staged until both underlying and issuer aliases have been human-approved.
+    blocked_products = stage_phase(tmp_path, "products", "operator", api)
+    assert blocked_products["eligible_rows"] == 0
+    assert blocked_products["counters"]["unresolved_underlying_alias"] == 2
+    assert blocked_products["counters"]["unresolved_issuer_alias"] == 2
+
+    api.aliases.extend([
+        _approved_alias("rwa_id", "nvidia", "underlying", "underlying-1"),
+        _approved_alias("issuer_id", "xstocks", "issuer", "issuer-1"),
+        _approved_alias("issuer_id", "ondo", "issuer", "issuer-2"),
+    ])
+    products = stage_phase(tmp_path, "products", "operator", api)
+    assert products["eligible_rows"] == 2
+    assert products["counters"]["unresolved_underlying_alias"] == 0
+    assert products["counters"]["unresolved_issuer_alias"] == 0
+
+    # The default map intentionally leaves unknown-chain unresolved; an explicit operator map can complete it.
+    networks = stage_phase(tmp_path, "networks", "operator", api)
+    assert networks["eligible_rows"] == 2
+    assert networks["counters"]["unsupported_platform_slugs"] == ["unknown-chain"]
+    custom_map = {"unknown-chain": {"namespace": "custom:unknown-chain",
+                                    "display_name": "Unknown Chain", "family": "other"}}
+    networks_retry = stage_phase(tmp_path, "networks", "operator", api, custom_map)
+    assert networks_retry["eligible_rows"] == 1
+    assert networks_retry["counters"]["unsupported_platform_slugs"] == []
+
+    api.aliases.extend([
+        _approved_alias("rwa_token_id", "nvidia-xstock", "issuer_product", "product-1"),
+        _approved_alias("rwa_token_id", "nvidia-ondo", "issuer_product", "product-2"),
+        _approved_alias("platform_slug", "ethereum", "network", "network-eth"),
+        _approved_alias("platform_slug", "solana", "network", "network-sol"),
+        _approved_alias("platform_slug", "unknown-chain", "network", "network-unknown"),
+    ])
+    deployments = stage_phase(tmp_path, "deployments", "operator", api, custom_map)
+    assert deployments["eligible_rows"] == 3
+    assert deployments["counters"]["unresolved_product_alias"] == 0
+    assert deployments["counters"]["unresolved_network_alias"] == 0
+
+    saved = __import__("json").loads((tmp_path / "manifest.json").read_text())
+    assert saved["staged_phases"]["foundations"]["status"] == "complete"
+    assert saved["staged_phases"]["products"]["status"] == "complete"
+    assert saved["staged_phases"]["networks"]["status"] == "complete"
+    assert saved["staged_phases"]["deployments"]["status"] == "complete"
+    assert len(saved["staged_batch_ids"]) == 5

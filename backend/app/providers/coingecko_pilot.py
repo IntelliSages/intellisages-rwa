@@ -71,7 +71,9 @@ def safe_slug(value: str, max_length: int = 110) -> str:
 
 
 def source_key(kind: str, provider_id: str) -> str:
-    return f"coingecko:{kind}:{safe_slug(provider_id, 120)}"
+    slug = safe_slug(provider_id, 105)
+    suffix = sha256_bytes(provider_id.encode("utf-8"))[:10]
+    return f"coingecko:{kind}:{slug}-{suffix}"
 
 
 def envelope(canonical_payload: dict[str, Any], source_payload: Any,
@@ -81,6 +83,10 @@ def envelope(canonical_payload: dict[str, Any], source_payload: Any,
         "source_payload": source_payload,
         "source_metadata": source_metadata,
     }
+
+
+def _detail_file_name(rwa_id: str) -> str:
+    return f"{safe_slug(rwa_id, 120)}-{sha256_bytes(rwa_id.encode('utf-8'))[:10]}.json"
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -122,7 +128,9 @@ class CoinGeckoClient:
             self._last_request = time.monotonic()
             try:
                 with urlopen(request, timeout=self.timeout) as response:
-                    raw = response.read()
+                    raw = response.read(5_000_001)
+                if len(raw) > 5_000_000:
+                    raise RuntimeError(f"CoinGecko response exceeded the 5 MB safety limit for {path}")
                 return json.loads(raw.decode("utf-8"))
             except HTTPError as exc:
                 if exc.code not in {429, 500, 502, 503, 504} or attempt >= self.max_retries:
@@ -195,8 +203,8 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         and not refresh_details
         and bool(prior.get("retrieved_at"))
     )
-    if prior.get("staged_phases") and not can_resume:
-        raise RuntimeError("This snapshot has staged imports. Use a new output directory for a new source snapshot.")
+    if prior.get("staged_phases"):
+        raise RuntimeError("A snapshot becomes immutable once an import phase is staged. Use a new output directory for a new source snapshot.")
     if not can_resume:
         for stale in detail_dir.glob("*.json"):
             stale.unlink()
@@ -207,7 +215,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         if not isinstance(rwa_id, str) or not rwa_id.strip():
             detail_errors.append({"rwa_id": f"row-{index}", "error": "missing provider RWA id"})
             continue
-        target = detail_dir / f"{safe_slug(rwa_id, 140)}.json"
+        target = detail_dir / _detail_file_name(rwa_id)
         if can_resume and target.exists():
             details_succeeded += 1
             continue
@@ -268,7 +276,7 @@ def load_snapshot(output_dir: Path) -> tuple[dict[str, Any], list[dict[str, Any]
         rwa_id = item.get("id")
         if not isinstance(rwa_id, str):
             continue
-        path = output_dir / "details" / f"{safe_slug(rwa_id, 140)}.json"
+        path = output_dir / "details" / _detail_file_name(rwa_id)
         if path.exists():
             details[rwa_id] = _read_json(path)
     return manifest, rwa_list, details
@@ -347,7 +355,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         if not isinstance(name, str) or not name.strip():
             counters["missing_underlying_name"] += 1
             continue
-        source_path = output_dir / "details" / f"{safe_slug(rwa_id, 140)}.json"
+        source_path = output_dir / "details" / _detail_file_name(rwa_id)
         raw_hash = sha256_bytes(source_path.read_bytes())
         canonical = {
             "canonical_key": source_key("rwa", rwa_id),
@@ -385,7 +393,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
                 "/rwas/issuers/list" if source_rwa_id is None else f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true",
                 retrieved_at, issuer_id,
                 sha256_bytes(canonical_json(raw_issuer)) if source_rwa_id is None else
-                sha256_bytes((output_dir / "details" / f"{safe_slug(source_rwa_id, 140)}.json").read_bytes()),
+                sha256_bytes((output_dir / "details" / _detail_file_name(source_rwa_id)).read_bytes()),
                 name_semantics="CoinGecko-reported issuer label; legal identity requires independent review.",
                 observed_underlying_rwa_id=source_rwa_id,
             )),
@@ -593,6 +601,7 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
         "full_provider_list_requested": manifest.get("is_full_provider_list", False),
         "detail_success_count": len(details),
         "detail_failure_count": manifest.get("details_failed", 0),
+        "detail_error_ids": [item.get("rwa_id") for item in manifest.get("detail_errors", [])],
         "detail_coverage_ratio": round(len(details) / max(1, manifest.get("requested_rwa_count", 0)), 4),
         "tokens_discovered": len(token_rows),
         "distinct_issuer_ids_in_token_details": len(issuer_ids),
@@ -635,6 +644,8 @@ class RegistryClient:
             return json.loads(raw.decode("utf-8")) if raw else None
         except HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1000]
+            if self.admin_token:
+                detail = detail.replace(self.admin_token, "[REDACTED]")
             raise RuntimeError(f"Registry API {method} {path} failed: HTTP {exc.code}: {detail}") from None
         except (URLError, TimeoutError) as exc:
             raise RuntimeError(f"Registry API {method} {path} failed: {type(exc).__name__}") from None
