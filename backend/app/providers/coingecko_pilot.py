@@ -14,7 +14,7 @@ import sys
 import time
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urljoin
 from urllib.request import Request, urlopen
@@ -722,7 +722,9 @@ class RegistryClient:
         return self.request("GET", f"/api/v1/registry/imports/{quote(batch_id, safe='')}")
 
     def stage_rows(self, rows: list[dict[str, Any]], submitted_by: str,
-                   source_version: str) -> list[dict[str, Any]]:
+                   source_version: str,
+                   on_batch: Callable[[dict[str, Any], list[dict[str, Any]]], None] | None = None
+                   ) -> list[dict[str, Any]]:
         staged = []
         for chunk in chunk_import_rows(rows):
             result = self.request("POST", "/api/v1/registry/imports", {
@@ -730,6 +732,8 @@ class RegistryClient:
                 "submitted_by": submitted_by, "records": chunk,
             })
             staged.append(result)
+            if on_batch is not None:
+                on_batch(result, chunk)
         return staged
 
 
@@ -811,18 +815,41 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     })
     staged_identities = set(phase_state["staged_external_ids"])
     rows = [row for row in rows if f"{row['entity_type']}|{row['source_namespace']}|{row['external_id']}" not in staged_identities]
-    batches = api.stage_rows(rows, submitted_by, manifest["retrieved_at"]) if rows else []
-    batch_ids = [item["id"] for item in batches]
     phase_state["attempts"] += 1
     phase_state["staged_at"] = utc_now()
     phase_state["last_eligible_rows"] = len(rows)
-    phase_state["batch_ids"] = list(dict.fromkeys(phase_state["batch_ids"] + batch_ids))
-    phase_state["staged_external_ids"] = list(dict.fromkeys(
-        phase_state["staged_external_ids"] + [
-            f"{row['entity_type']}|{row['source_namespace']}|{row['external_id']}" for row in rows
-        ]
-    ))
     phase_state["last_counters"] = counters
+
+    def persist_successful_batch(result: dict[str, Any], chunk: list[dict[str, Any]]) -> None:
+        batch_id = result["id"]
+        phase_state["batch_ids"] = list(dict.fromkeys(phase_state["batch_ids"] + [batch_id]))
+        phase_state["staged_external_ids"] = list(dict.fromkeys(
+            phase_state["staged_external_ids"] + [
+                f"{row['entity_type']}|{row['source_namespace']}|{row['external_id']}" for row in chunk
+            ]
+        ))
+        manifest.setdefault("staged_batch_ids", []).append(batch_id)
+        manifest["staged_batch_ids"] = list(dict.fromkeys(manifest["staged_batch_ids"]))
+        # Persist each successful batch immediately. If a later chunk fails, a retry
+        # will not duplicate the already-created batch or lose its reconciliation ID.
+        _write_json(output_dir / "manifest.json", manifest)
+
+    try:
+        batches = api.stage_rows(rows, submitted_by, manifest["retrieved_at"],
+                                 on_batch=persist_successful_batch) if rows else []
+    except Exception:
+        phase_state["status"] = "in_progress"
+        _write_json(output_dir / "manifest.json", manifest)
+        try:
+            api.request("PATCH", f"/api/v1/registry/provider-runs/{run['id']}", {
+                "status": "awaiting_review",
+                "coverage": build_coverage(output_dir, manifest, {"last_staged_phase": phase}),
+                "staged_batch_ids": manifest.get("staged_batch_ids", []),
+            })
+        except Exception:
+            pass
+        raise
+    batch_ids = [item["id"] for item in batches]
     if phase == "networks":
         phase_complete = not counters.get("unsupported_platform_slugs") and counters.get("tokens_without_platforms", 0) == 0
     elif phase == "products":
@@ -849,7 +876,8 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     _write_json(output_dir / "manifest.json", manifest)
     _write_json(output_dir / "coverage.json", coverage)
     api.request("PATCH", f"/api/v1/registry/provider-runs/{run['id']}", {
-        "status": "awaiting_review", "coverage": coverage, "staged_batch_ids": batch_ids,
+        "status": "awaiting_review", "coverage": coverage,
+        "staged_batch_ids": manifest["staged_batch_ids"],
     })
     return {"run_id": run["id"], "phase": phase, "eligible_rows": len(rows),
             "batches": batches, "counters": counters, "coverage": coverage}
@@ -923,6 +951,7 @@ def reconcile_run(output_dir: Path, api: RegistryClient) -> dict[str, Any]:
     _write_json(output_dir / "coverage.json", coverage)
     api.request("PATCH", f"/api/v1/registry/provider-runs/{run_id}", {
         "status": status, "coverage": coverage,
+        "staged_batch_ids": manifest.get("staged_batch_ids", []),
     })
     return coverage
 

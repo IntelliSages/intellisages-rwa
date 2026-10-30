@@ -155,7 +155,7 @@ class FakeRegistry:
     def get_aliases(self):
         return list(self.aliases)
 
-    def stage_rows(self, rows, submitted_by, source_version):
+    def stage_rows(self, rows, submitted_by, source_version, on_batch=None):
         batch_id = f"batch-{self.next_batch}"
         self.next_batch += 1
         self.batches[batch_id] = {
@@ -164,7 +164,10 @@ class FakeRegistry:
                          "source_namespace": row["source_namespace"], "external_id": row["external_id"]}
                         for row in rows],
         }
-        return [{"id": batch_id, "total_records": len(rows)}]
+        result = {"id": batch_id, "total_records": len(rows)}
+        if on_batch is not None:
+            on_batch(result, rows)
+        return [result]
 
     def get_batch(self, batch_id):
         return self.batches[batch_id]
@@ -276,3 +279,26 @@ def test_snapshot_rejects_detail_response_without_tokens_array(tmp_path):
     assert manifest["details_succeeded"] == 0
     assert manifest["details_failed"] == 1
     assert manifest["detail_errors"][0]["rwa_id"] == "nvidia"
+
+
+
+def test_successful_batch_is_persisted_before_later_stage_failure(tmp_path):
+    from app.providers.coingecko_pilot import stage_phase
+
+    class FailsAfterOneBatch(FakeRegistry):
+        def stage_rows(self, rows, submitted_by, source_version, on_batch=None):
+            first = super().stage_rows(rows, submitted_by, source_version, on_batch)
+            raise RuntimeError("simulated later chunk failure")
+
+    fetch_snapshot(tmp_path, FakeCoinGecko())
+    api = FailsAfterOneBatch()
+    import pytest
+    with pytest.raises(RuntimeError, match="later chunk failure"):
+        stage_phase(tmp_path, "foundations", "operator", api)
+    manifest = __import__("json").loads((tmp_path / "manifest.json").read_text())
+    assert len(manifest["staged_batch_ids"]) == 1
+    assert len(manifest["staged_phases"]["foundations"]["staged_external_ids"]) == 3
+    # A retry does not create another copy of the batch; it can safely complete the phase.
+    completed = stage_phase(tmp_path, "foundations", "operator", api)
+    assert completed["eligible_rows"] == 0
+    assert len(__import__("json").loads((tmp_path / "manifest.json").read_text())["staged_batch_ids"]) == 1
