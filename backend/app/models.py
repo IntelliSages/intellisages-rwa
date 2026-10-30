@@ -1,0 +1,97 @@
+from datetime import datetime, timezone
+from uuid import uuid4
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+def new_id() -> str:
+    return str(uuid4())
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+class Base(DeclarativeBase):
+    pass
+
+class UnderlyingAsset(Base):
+    __tablename__ = "underlying_assets"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_key: Mapped[str] = mapped_column(String(160), unique=True)
+    display_name: Mapped[str] = mapped_column(String(240))
+    asset_type: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+class Issuer(Base):
+    __tablename__ = "issuers"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_key: Mapped[str] = mapped_column(String(160), unique=True)
+    legal_name: Mapped[str] = mapped_column(String(240))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+class IssuerProduct(Base):
+    __tablename__ = "issuer_products"
+    __table_args__ = (UniqueConstraint("issuer_id", "native_product_id", name="uq_product_issuer_native_id"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_key: Mapped[str] = mapped_column(String(160), unique=True)
+    issuer_id: Mapped[str] = mapped_column(ForeignKey("issuers.id"), index=True)
+    underlying_id: Mapped[str] = mapped_column(ForeignKey("underlying_assets.id"), index=True)
+    native_product_id: Mapped[str] = mapped_column(String(180))
+    display_name: Mapped[str] = mapped_column(String(240))
+    symbol: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    instrument_form: Mapped[str] = mapped_column(String(60))
+    unit_description: Mapped[str] = mapped_column(String(240))
+    representation_type: Mapped[str] = mapped_column(String(30), default="unknown")
+    issuer: Mapped[Issuer] = relationship()
+    underlying: Mapped[UnderlyingAsset] = relationship()
+
+class Network(Base):
+    __tablename__ = "networks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    namespace: Mapped[str] = mapped_column(String(120), unique=True)
+    display_name: Mapped[str] = mapped_column(String(120))
+    family: Mapped[str] = mapped_column(String(30))
+
+class Deployment(Base):
+    __tablename__ = "deployments"
+    __table_args__ = (UniqueConstraint("network_id", "normalized_identifier", name="uq_deployment_network_identifier"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    issuer_product_id: Mapped[str] = mapped_column(ForeignKey("issuer_products.id"), index=True)
+    network_id: Mapped[str] = mapped_column(ForeignKey("networks.id"), index=True)
+    native_identifier: Mapped[str] = mapped_column(String(220))
+    normalized_identifier: Mapped[str] = mapped_column(String(220))
+    representation_type: Mapped[str] = mapped_column(String(30), default="unknown")
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    issuer_product: Mapped[IssuerProduct] = relationship()
+    network: Mapped[Network] = relationship()
+
+class Venue(Base):
+    __tablename__ = "venues"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_key: Mapped[str] = mapped_column(String(160), unique=True)
+    display_name: Mapped[str] = mapped_column(String(180))
+    venue_type: Mapped[str] = mapped_column(String(40))
+
+class PerpetualContract(Base):
+    __tablename__ = "perpetual_contracts"
+    __table_args__ = (UniqueConstraint("venue_id", "domain", "native_market_id", name="uq_perp_venue_domain_market"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_key: Mapped[str] = mapped_column(String(200), unique=True)
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id"), index=True)
+    native_market_id: Mapped[str] = mapped_column(String(180))
+    native_symbol: Mapped[str] = mapped_column(String(100))
+    domain: Mapped[str] = mapped_column(String(120), default="")
+    builder_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    underlying_id: Mapped[str | None] = mapped_column(ForeignKey("underlying_assets.id"), nullable=True)
+    issuer_product_id: Mapped[str | None] = mapped_column(ForeignKey("issuer_products.id"), nullable=True)
+    venue: Mapped[Venue] = relationship()
+
+class ProviderAlias(Base):
+    __tablename__ = "provider_aliases"
+    __table_args__ = (UniqueConstraint("provider", "namespace", "external_id", name="uq_provider_alias_external"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(100), index=True)
+    namespace: Mapped[str] = mapped_column(String(100))
+    external_id: Mapped[str] = mapped_column(String(220))
+    entity_type: Mapped[str] = mapped_column(String(40))
+    entity_id: Mapped[str] = mapped_column(String(36), index=True)
+    evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
