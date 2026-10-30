@@ -7,6 +7,13 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.alembic_impl import ExtendedPostgresqlImpl
+from app.database import (
+    ALEMBIC_VERSION_NUM_LENGTH,
+    ensure_alembic_version_column_length,
+    normalise_database_url,
+)
+
+
 
 
 def test_postgresql_alembic_version_table_uses_extended_column():
@@ -19,13 +26,6 @@ def test_postgresql_alembic_version_table_uses_extended_column():
         version_table_pk=True,
     )
     assert table.c.version_num.type.length == ALEMBIC_VERSION_NUM_LENGTH
-
-
-from app.database import (
-    ALEMBIC_VERSION_NUM_LENGTH,
-    ensure_alembic_version_column_length,
-    normalise_database_url,
-)
 
 
 def test_postgres_urls_use_psycopg_v3():
