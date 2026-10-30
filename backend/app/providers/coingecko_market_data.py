@@ -110,8 +110,8 @@ def refresh_coingecko_rwa_market_data(
     try:
         list_retrieved = _now()
         list_payload = api.get_json(LIST_PATH)
-        listed = _rows(list_payload, LIST_PATH)
         list_json = json.dumps(list_payload, sort_keys=True, separators=(",", ":"))
+        listed = _rows(list_payload, LIST_PATH)
         db.add(models.ProviderRawResponse(
             run_id=run.id,
             provider="coingecko",
