@@ -16,9 +16,9 @@ from app.registry import _normalize_identifier
 
 router = APIRouter(prefix="/api/v1/registry/imports", tags=["registry imports"])
 
-ENTITY_MODELS = {"underlying": models.UnderlyingAsset, "issuer": models.Issuer,
+ENTITY_MODELS = {"underlying": models.UnderlyingAsset, "issuer": models.Issuer, "network": models.Network,
                  "issuer_product": models.IssuerProduct, "deployment": models.Deployment}
-CREATE_SCHEMAS = {"underlying": schemas.UnderlyingCreate, "issuer": schemas.IssuerCreate,
+CREATE_SCHEMAS = {"underlying": schemas.UnderlyingCreate, "issuer": schemas.IssuerCreate, "network": schemas.NetworkCreate,
                   "issuer_product": schemas.ProductCreate, "deployment": schemas.DeploymentCreate}
 
 
@@ -65,6 +65,12 @@ def _candidate(db: Session, record: models.RegistryImportRecord, entity_type: st
             candidate.evidence_ref = evidence_ref
 
 
+def _canonical_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Read canonical fields from a provider envelope while retaining the full source row."""
+    canonical = payload.get("canonical_payload") if isinstance(payload, dict) else None
+    return canonical if isinstance(canonical, dict) else payload
+
+
 def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:
     network = db.get(models.Network, payload.get("network_id"))
     if network is None:
@@ -74,6 +80,7 @@ def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:
 
 def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
                          record: models.RegistryImportRecord, payload: dict[str, Any]):
+    payload = _canonical_payload(payload)
     aliases = db.scalars(select(models.ProviderAlias).where(
         models.ProviderAlias.provider == batch.source,
         models.ProviderAlias.namespace == record.source_namespace,
@@ -97,6 +104,15 @@ def _discover_candidates(db: Session, batch: models.RegistryImportBatch,
         if isinstance(name, str) and name:
             for item in db.scalars(select(model).where(func.lower(getattr(model, field)) == name.lower())).all():
                 _candidate(db, record, record.entity_type, item.id, "exact_name_not_unique_identity", 0.55)
+    elif record.entity_type == "network":
+        namespace = payload.get("namespace")
+        if isinstance(namespace, str) and namespace:
+            for item in db.scalars(select(model).where(model.namespace == namespace)).all():
+                _candidate(db, record, "network", item.id, "exact_network_namespace", 1.0)
+        display_name = payload.get("display_name")
+        if isinstance(display_name, str) and display_name:
+            for item in db.scalars(select(model).where(func.lower(model.display_name) == display_name.lower())).all():
+                _candidate(db, record, "network", item.id, "network_name_not_unique_identity", 0.5)
     elif record.entity_type == "issuer_product":
         key = payload.get("canonical_key")
         if key:

@@ -1,7 +1,7 @@
 from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
-ImportEntityType = Literal["underlying", "issuer", "issuer_product", "deployment"]
+ImportEntityType = Literal["underlying", "issuer", "network", "issuer_product", "deployment"]
 
 class ImportStrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -69,3 +69,34 @@ class ImportAuditRead(BaseModel):
     action: str
     details: dict[str, Any]
     created_at: str
+
+
+class ProviderRunCreate(ImportStrictModel):
+    provider: str = Field(min_length=1, max_length=100)
+    dataset: str = Field(min_length=1, max_length=120)
+    source_version: str = Field(min_length=1, max_length=160)
+    started_by: str = Field(min_length=1, max_length=160)
+    manifest_sha256: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")
+    coverage: dict[str, Any] = Field(default_factory=dict)
+
+class ProviderRunUpdate(ImportStrictModel):
+    status: Literal["snapshot_ready", "awaiting_review", "partial", "completed", "failed"] | None = None
+    manifest_sha256: str | None = Field(default=None, min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")
+    coverage: dict[str, Any] | None = None
+    staged_batch_ids: list[str] | None = Field(default=None, max_length=200)
+    error_summary: str | None = Field(default=None, max_length=2000)
+
+class ProviderRunRead(BaseModel):
+    id: str
+    provider: str
+    dataset: str
+    source_version: str
+    started_by: str
+    status: str
+    manifest_sha256: str
+    coverage: dict[str, Any]
+    staged_batch_ids: list[str]
+    error_summary: str | None
+    created_at: str
+    updated_at: str
+    completed_at: str | None
