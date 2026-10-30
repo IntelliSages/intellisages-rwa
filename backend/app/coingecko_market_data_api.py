@@ -76,6 +76,39 @@ def get_latest_rwa_market_data(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/rwa/verified-underlyings")
+def get_verified_underlying_market_data(db: Session = Depends(get_db)):
+    """Return aggregate RWA metrics only for independently verified provider aliases."""
+    run = latest_coingecko_run(db)
+    if run is None:
+        return {"status": "unavailable", "reason": "no_successful_refresh", "items": []}
+    rows = db.execute(
+        select(models.ProviderAlias, models.CoinGeckoRwaMarketObservation)
+        .join(
+            models.CoinGeckoRwaMarketObservation,
+            models.CoinGeckoRwaMarketObservation.provider_rwa_id
+            == models.ProviderAlias.external_id,
+        )
+        .where(
+            models.ProviderAlias.provider == "coingecko",
+            models.ProviderAlias.namespace == "rwa_id",
+            models.ProviderAlias.entity_type == "underlying",
+            models.ProviderAlias.is_verified.is_(True),
+            models.CoinGeckoRwaMarketObservation.run_id == run.id,
+        )
+    ).all()
+    return {
+        "status": run.status,
+        "run_id": run.id,
+        "coverage": json.loads(run.coverage_json),
+        "items": [
+            {"underlying_id": alias.entity_id, **_read_observation(observation)}
+            for alias, observation in rows
+            if db.get(models.UnderlyingAsset, alias.entity_id) is not None
+        ],
+    }
+
+
 @router.post("/rwa/refresh", status_code=202)
 def refresh_rwa_market_data(
     x_coingecko_refresh_token: str | None = Header(default=None),
