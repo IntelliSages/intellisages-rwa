@@ -288,6 +288,10 @@ def test_provider_run_coverage_is_persisted_and_completed_runs_are_immutable(cli
         "status": "completed", "coverage": {"provider_rwa_list_count": 647}
     })
     assert invalid_completion.status_code == 409
+    malformed_completion = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "completed", "coverage": {"all_pipeline_phases_staged": True, "phase_status": None}
+    })
+    assert malformed_completion.status_code == 409
     complete_coverage = {
         "provider_rwa_list_count": 647, "details": 647,
         "all_pipeline_phases_staged": True, "full_provider_list_requested": True,

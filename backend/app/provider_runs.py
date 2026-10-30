@@ -57,9 +57,10 @@ def update_provider_run(run_id: str, payload: import_schemas.ProviderRunUpdate,
         next_coverage = json.loads(run.coverage_json)
     if data.get("status") == "completed":
         required_phases = {"foundations", "networks", "products", "deployments"}
-        phase_status = next_coverage.get("phase_status", {})
+        phase_status = next_coverage.get("phase_status")
         if (
-            next_coverage.get("all_pipeline_phases_staged") is not True
+            not isinstance(phase_status, dict)
+            or next_coverage.get("all_pipeline_phases_staged") is not True
             or not required_phases.issubset(set(phase_status))
             or any(phase_status.get(name) != "complete" for name in required_phases)
             or next_coverage.get("full_provider_list_requested") is not True
