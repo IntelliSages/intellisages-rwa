@@ -56,6 +56,8 @@ def test_snapshot_fetches_real_endpoint_shapes_and_writes_resumable_raw_files(tm
     assert manifest["expected_rwa_count"] == 1
     assert manifest["details_succeeded"] == 1
     assert manifest["details_failed"] == 0
+    assert manifest["detail_retrieved_at"]["nvidia"]
+    assert manifest["rwa_list_retrieved_at"]
     assert ("rwas/nvidia", {"tokens": "true", "tokenized_market_data": "true"}) in client.calls
     assert (tmp_path / "rwas-list.json").exists()
     assert (tmp_path / "details" / next((p.name for p in (tmp_path / "details").glob("*.json")))).exists()
@@ -233,7 +235,7 @@ def test_phased_pipeline_waits_for_approved_parents_and_can_resume_partial_phase
         _approved_alias("platform_slug", "solana", "network", "network-sol"),
         _approved_alias("platform_slug", "unknown-chain", "network", "network-unknown"),
     ])
-    deployments = stage_phase(tmp_path, "deployments", "operator", api, custom_map)
+    deployments = stage_phase(tmp_path, "deployments", "operator", api)
     assert deployments["eligible_rows"] == 4
     assert deployments["counters"]["unresolved_product_alias"] == 0
     assert deployments["counters"]["unresolved_network_alias"] == 0
@@ -243,6 +245,7 @@ def test_phased_pipeline_waits_for_approved_parents_and_can_resume_partial_phase
     assert saved["staged_phases"]["products"]["status"] == "complete"
     assert saved["staged_phases"]["networks"]["status"] == "complete"
     assert saved["staged_phases"]["deployments"]["status"] == "complete"
+    assert saved["network_map"]["unknown-chain"]["namespace"] == "custom:unknown-chain"
     assert len(saved["staged_batch_ids"]) == 5
 
 

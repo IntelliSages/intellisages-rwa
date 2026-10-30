@@ -147,7 +147,7 @@ python -m app.providers.coingecko_pilot stage \\
   --phase networks --submitted-by 'operator@your-company'
 \`\`\`
 
-The adapter includes only explicit platform-to-chain mappings (Ethereum, BNB Smart Chain, Polygon PoS, Arbitrum One, Base, Optimism, Avalanche C-Chain and Solana). Unknown CoinGecko platform slugs are reported and are not guessed. Add verified mappings using a JSON object keyed by the exact provider platform slug, then rerun the phase:
+The adapter includes only explicit platform-to-chain mappings (Ethereum, BNB Smart Chain, Polygon PoS, Arbitrum One, Base, Optimism, Avalanche C-Chain and Solana). Unknown CoinGecko platform slugs are reported and are not guessed. Add verified mappings using a JSON object keyed by the exact provider platform slug, then rerun the phase. The selected map is saved in the snapshot manifest and reused automatically during deployment staging:
 
 \`\`\`json
 {

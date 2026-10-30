@@ -164,6 +164,9 @@ def snapshot_digest(manifest: dict[str, Any]) -> str:
         "provider": manifest.get("provider"),
         "dataset": manifest.get("dataset"),
         "retrieved_at": manifest.get("retrieved_at"),
+        "rwa_list_retrieved_at": manifest.get("rwa_list_retrieved_at"),
+        "issuer_list_retrieved_at": manifest.get("issuer_list_retrieved_at"),
+        "detail_retrieved_at": manifest.get("detail_retrieved_at", {}),
         "expected_rwa_count": manifest.get("expected_rwa_count"),
         "requested_rwa_count": manifest.get("requested_rwa_count"),
         "details_succeeded": manifest.get("details_succeeded"),
@@ -180,6 +183,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
     detail_dir.mkdir(parents=True, exist_ok=True)
 
     rwa_list = _list_payload(client.get_json(RWA_LIST_PATH), RWA_LIST_PATH)
+    rwa_list_retrieved_at = utc_now()
     if not rwa_list:
         raise RuntimeError("CoinGecko returned an empty RWA list; refusing to create a zero-coverage snapshot.")
     if limit is not None and limit < 1:
@@ -192,8 +196,10 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
     if issuer_list_path.exists():
         issuer_list_path.unlink()
     issuer_list_error = None
+    issuer_list_retrieved_at = None
     try:
         issuer_rows = _list_payload(client.get_json(ISSUER_LIST_PATH), ISSUER_LIST_PATH)
+        issuer_list_retrieved_at = utc_now()
         _write_json(output_dir / "issuers-list.json", issuer_rows)
     except Exception as exc:  # optional corroborating endpoint; token issuer_details remains primary
         issuer_list_error = str(exc)[:500]
@@ -213,6 +219,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         for stale in detail_dir.glob("*.json"):
             stale.unlink()
     detail_errors: list[dict[str, str]] = []
+    detail_retrieved_at: dict[str, str] = dict(prior.get("detail_retrieved_at", {})) if can_resume else {}
     details_succeeded = 0
     for index, item in enumerate(selected, start=1):
         rwa_id = item.get("id")
@@ -221,6 +228,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
             continue
         target = detail_dir / _detail_file_name(rwa_id)
         if can_resume and target.exists():
+            detail_retrieved_at.setdefault(rwa_id, prior.get("retrieved_at") or rwa_list_retrieved_at)
             details_succeeded += 1
             continue
         try:
@@ -233,6 +241,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
             if not isinstance(detail.get("tokens"), list):
                 raise RuntimeError("detail response omitted the requested tokens array")
             _write_json(target, detail)
+            detail_retrieved_at[rwa_id] = utc_now()
             details_succeeded += 1
         except Exception as exc:
             detail_errors.append({"rwa_id": rwa_id, "error": str(exc)[:500]})
@@ -252,6 +261,9 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         "provider": PROVIDER,
         "dataset": DATASET,
         "retrieved_at": retrieved_at,
+        "rwa_list_retrieved_at": rwa_list_retrieved_at,
+        "issuer_list_retrieved_at": issuer_list_retrieved_at,
+        "detail_retrieved_at": detail_retrieved_at,
         "source_base_url": client.base_url,
         "rwa_list_sha256": list_hash,
         "expected_rwa_count": len(rwa_list),
@@ -371,7 +383,10 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         rows.append({
             "entity_type": "underlying", "source_namespace": "rwa_id", "external_id": rwa_id,
             "payload": envelope(canonical, item, _metadata(
-                f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true", retrieved_at, rwa_id, raw_hash,
+                f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true",
+                manifest.get("detail_retrieved_at", {}).get(rwa_id, retrieved_at), rwa_id, raw_hash,
+                discovery_endpoint="/rwas/list",
+                discovery_retrieved_at=manifest.get("rwa_list_retrieved_at"),
             )),
         })
         counters["underlyings"] += 1
@@ -397,7 +412,8 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
             "entity_type": "issuer", "source_namespace": "issuer_id", "external_id": issuer_id,
             "payload": envelope(canonical, raw_issuer, _metadata(
                 "/rwas/issuers/list" if source_rwa_id is None else f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true&tokenized_market_data=true",
-                retrieved_at, issuer_id,
+                manifest.get("issuer_list_retrieved_at") if source_rwa_id is None else
+                manifest.get("detail_retrieved_at", {}).get(source_rwa_id, retrieved_at), issuer_id,
                 sha256_bytes(canonical_json(raw_issuer)) if source_rwa_id is None else
                 sha256_bytes((output_dir / "details" / _detail_file_name(source_rwa_id)).read_bytes()),
                 name_semantics="CoinGecko-reported issuer label; legal identity requires independent review.",
@@ -451,6 +467,11 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
                 "/rwas/{id}?tokens=true&tokenized_market_data=true&tokenized_market_data=true", manifest["retrieved_at"], slug,
                 sha256_bytes(canonical_json(platform_evidence.get(slug, []))),
                 mapping_basis="explicit CoinGecko platform-to-CAIP-2 mapping",
+                source_rwa_ids=sorted({item["rwa_id"] for item in platform_evidence.get(slug, [])}),
+                source_retrieved_at_by_rwa={
+                    rwa_id: manifest.get("detail_retrieved_at", {}).get(rwa_id, manifest["retrieved_at"])
+                    for rwa_id in sorted({item["rwa_id"] for item in platform_evidence.get(slug, [])})
+                },
             )),
         })
     return rows, {"platform_slugs_discovered": len(slugs), "supported_platform_slugs": len(rows),
@@ -510,6 +531,7 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
             "payload": envelope(canonical, token, _metadata(
                 f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true", manifest["retrieved_at"],
                 token_id, source_hash, underlying_rwa_id=rwa_id,
+                source_retrieved_at=manifest.get("detail_retrieved_at", {}).get(rwa_id, manifest["retrieved_at"]),
                 issuer_id=issuer_id, issuer_name=issuer.get("name"),
             )),
         })
@@ -577,6 +599,7 @@ def build_deployment_rows(manifest: dict[str, Any], details: dict[str, dict[str,
                     f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true", manifest["retrieved_at"],
                     external_id, sha256_bytes(canonical_json({"token_id": token_id, "platform": slug, "address": address})),
                     underlying_rwa_id=rwa_id,
+                    source_retrieved_at=manifest.get("detail_retrieved_at", {}).get(rwa_id, manifest["retrieved_at"]),
                 )),
             })
             counters["deployments_stageable"] += 1
@@ -610,6 +633,9 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
         "dataset": DATASET,
         "scope": manifest.get("provider_universe_scope"),
         "snapshot_retrieved_at": manifest.get("retrieved_at"),
+        "rwa_list_retrieved_at": manifest.get("rwa_list_retrieved_at"),
+        "issuer_list_retrieved_at": manifest.get("issuer_list_retrieved_at"),
+        "detail_retrieved_at_count": len(manifest.get("detail_retrieved_at", {})),
         "provider_rwa_list_count": manifest.get("expected_rwa_count", 0),
         "requested_rwa_count": manifest.get("requested_rwa_count", 0),
         "full_provider_list_requested": manifest.get("is_full_provider_list", False),
@@ -747,6 +773,10 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     if existing_phase.get("status") == "complete":
         raise RuntimeError(f"Phase {phase} is already complete for this snapshot.")
     run = _ensure_run(output_dir, manifest, api, submitted_by)
+    effective_network_map = dict(manifest.get("network_map", {}))
+    if network_map:
+        effective_network_map.update(network_map)
+        manifest["network_map"] = effective_network_map
     aliases = api.get_aliases()
     counters: dict[str, Any] = {}
     if phase == "foundations":
@@ -766,7 +796,7 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
         rows = filtered
         counters["already_mapped"] = already
     elif phase == "networks":
-        rows, counters = build_network_rows(output_dir, manifest, details, network_map)
+        rows, counters = build_network_rows(output_dir, manifest, details, effective_network_map)
         network_aliases = _active_alias_map(aliases, "platform_slug", "network")
         filtered = [row for row in rows if row["external_id"] not in network_aliases]
         counters["already_mapped"] = len(rows) - len(filtered)
@@ -774,7 +804,7 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     elif phase == "products":
         rows, counters = build_product_rows(manifest, details, aliases)
     else:
-        rows, counters = build_deployment_rows(manifest, details, aliases, network_map)
+        rows, counters = build_deployment_rows(manifest, details, aliases, effective_network_map)
 
     phase_state = manifest.setdefault("staged_phases", {}).setdefault(phase, {
         "attempts": 0, "staged_external_ids": [], "batch_ids": [],
