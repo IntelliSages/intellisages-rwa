@@ -273,7 +273,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         "details_failed": len(detail_errors),
         "detail_errors": detail_errors,
         "issuer_list_count": len(issuer_rows),
-        "issuer_list_available": bool(issuer_rows),
+        "issuer_list_available": issuer_list_error is None,
         "issuer_list_error": issuer_list_error,
         "files": files,
         "provider_universe_scope": "CoinGecko-tracked RWA list at retrieval time; not the complete global tokenized-asset universe.",
