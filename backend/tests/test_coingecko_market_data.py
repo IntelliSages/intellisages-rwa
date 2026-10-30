@@ -60,7 +60,7 @@ def test_refresh_persists_raw_pages_and_normalized_observations():
         assert result["coverage"]["expected_rwa_count"] == 3
         assert result["coverage"]["received_rwa_count"] == 3
         assert result["coverage"]["complete"] is True
-        assert len(db.scalars(select(ProviderRawResponse)).all()) == 2
+        assert len(db.scalars(select(ProviderRawResponse)).all()) == 3
         observations = db.scalars(select(CoinGeckoRwaMarketObservation)).all()
         assert {row.provider_rwa_id for row in observations} == {"gold", "silver", "amazon"}
         assert len(db.scalars(select(ProviderRefreshRun)).all()) == 1
