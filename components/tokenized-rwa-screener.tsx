@@ -129,26 +129,35 @@ export function TokenizedRwaScreener() {
   }, [search, issuerId, networkId, sort, direction, offset, retry]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/market-data/coingecko/rwa", {
-      signal: controller.signal,
-      headers: { accept: "application/json" },
-    })
-      .then(async response => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error("Market data unavailable");
-        return payload as { status?: string; items?: UnderlyingMarketData[] };
+    let controller = new AbortController();
+    const loadMarketData = () => {
+      controller.abort();
+      controller = new AbortController();
+      fetch("/api/market-data/coingecko/rwa", {
+        signal: controller.signal,
+        headers: { accept: "application/json" },
       })
-      .then(payload => {
-        if (!controller.signal.aborted) {
-          setMarketData(Array.isArray(payload.items) ? payload.items : []);
-          setMarketCoverage(payload.status ?? "unavailable");
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setMarketCoverage("unavailable");
-      });
-    return () => controller.abort();
+        .then(async response => {
+          const payload = await response.json();
+          if (!response.ok) throw new Error("Market data unavailable");
+          return payload as { status?: string; items?: UnderlyingMarketData[] };
+        })
+        .then(payload => {
+          if (!controller.signal.aborted) {
+            setMarketData(Array.isArray(payload.items) ? payload.items : []);
+            setMarketCoverage(payload.status ?? "unavailable");
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setMarketCoverage("unavailable");
+        });
+    };
+    loadMarketData();
+    const interval = window.setInterval(loadMarketData, 60_000);
+    return () => {
+      window.clearInterval(interval);
+      controller.abort();
+    };
   }, []);
 
   const activeFilters = useMemo(
