@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound(){return <div className="stack" style={{minHeight:"60vh",justifyContent:"center",alignItems:"center",textAlign:"center"}}><p className="eyebrow">404 · NOT FOUND</p><h1>This destination does not exist.</h1><p className="subtitle">No substitute asset or market has been selected.</p><Link href="/" className="back-link">Return to market overview</Link></div>;}
