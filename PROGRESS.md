@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation and canonical identity registry increments PRs #2, #3 and #4 are merged. Perpetual contract migration history is in progress on `feat/perpetual-contract-migration-history`; final CI evidence is pending. PR creation is gated on the final documentation commit passing again.
+**Status:** Frontend foundation and canonical identity registry increments PRs #2, #3 and #4 are merged. Perpetual contract migration history is implemented on `feat/perpetual-contract-migration-history`; initial implementation CI passed on commit `8289736fe72924855c16d47be4fd3401d0613355`. Final documentation-commit and PR-triggered CI remain mandatory before review.
 
 ## 1. Verified implementation evidence
 
@@ -104,4 +104,6 @@ Branch: `feat/perpetual-contract-migration-history`.
 
 The current increment adds evidence-bearing migration events with predecessor/successor links and native identifier snapshots. Symbol-only changes retain the same canonical contract and record previous/new symbols; native market ID changes, venue migrations and replacements link distinct contract records; delisting/expiry are terminal events. Self-links, missing references, duplicate events and lineage cycles are rejected. The events do not assert economic equivalence or rewrite historical observations.
 
-The event date is a calendar date. Intraday cutover precision, observation-to-contract lineage, contract lifecycle effective periods and source reconciliation remain outside this increment. Migration evidence is required and verification defaults to false. Push and PR CI evidence will be recorded here only after the final commit passes both workflows.
+The event date is a calendar date. Intraday cutover precision, observation-to-contract lineage, contract lifecycle effective periods and source reconciliation remain outside this increment. Migration evidence is required and verification defaults to false.
+
+Initial implementation validation on commit `8289736fe72924855c16d47be4fd3401d0613355`: GitHub Actions push run `40988066268` passed both quality jobs. Backend: Ruff passed, 28 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. The final documentation commit must be revalidated before PR creation.
