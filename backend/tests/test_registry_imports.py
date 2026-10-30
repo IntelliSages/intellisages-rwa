@@ -241,3 +241,17 @@ def test_oversized_import_payload_is_rejected_without_creating_batch(client):
     }, "asset-id")])
     assert response.status_code == 413
     assert client.get("/api/v1/registry/imports").json() == []
+
+
+
+def test_create_new_product_rejects_unknown_parent_references(client):
+    batch = stage(client, [row("issuer_product", "new-product-id", {
+        "canonical_key": "product:missing:nvda", "issuer_id": "missing-issuer",
+        "underlying_id": "missing-underlying", "native_product_id": "NVDAx",
+        "display_name": "NVDAx", "instrument_form": "tokenized_equity",
+        "unit_description": "one token"}, "native-product-id")]).json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    response = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "create_new", "reviewer": "reviewer", "evidence_ref": "evidence:product"})
+    assert response.status_code == 404
+    assert client.get("/api/v1/registry/products").json() == []

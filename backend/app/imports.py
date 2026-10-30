@@ -264,7 +264,14 @@ def decide_import_record(record_id: str, decision: import_schemas.ImportDecision
                     "message": "Imported payload does not satisfy canonical entity requirements.",
                     "errors": exc.errors()}) from exc
             data = clean.model_dump()
+            if record.entity_type == "issuer_product":
+                if db.get(models.Issuer, data["issuer_id"]) is None:
+                    raise HTTPException(status_code=404, detail="Imported issuer product references an unknown canonical issuer.")
+                if db.get(models.UnderlyingAsset, data["underlying_id"]) is None:
+                    raise HTTPException(status_code=404, detail="Imported issuer product references an unknown canonical underlying.")
             if record.entity_type == "deployment":
+                if db.get(models.IssuerProduct, data["issuer_product_id"]) is None:
+                    raise HTTPException(status_code=404, detail="Imported deployment references an unknown canonical issuer product.")
                 data["normalized_identifier"] = _normalise_deployment_payload(db, data)
             target = ENTITY_MODELS[record.entity_type](**data)
             db.add(target)
