@@ -10,7 +10,7 @@ export async function GET() {
   }
   try {
     const response = await fetch(
-      `${base}/api/v1/market-data/coingecko/rwa/verified-underlyings`,
+      `${base}/api/v1/market-data/coingecko/rwa/latest`,
       { cache: "no-store", headers: { accept: "application/json" } },
     );
     const payload = await response.json().catch(() => ({
