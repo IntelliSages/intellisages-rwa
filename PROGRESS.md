@@ -203,4 +203,18 @@ Implemented scope:
 - Import API disabled unless a server-side REGISTRY_ADMIN_TOKEN is configured; requests require X-Registry-Admin-Token. The token must never be sent to browser code.
 - Alembic migration 0005_registry_import_reconciliation adds batch, record, candidate and audit tables.
 
-Validation status: automated import workflow tests and CI/migration execution are pending on this branch. No provider feed is connected, and no live data has been imported. This increment does not implement authentication identity management, role provisioning, audit retention controls, provider rights validation or a browser upload UI.
+Validation status: final implementation commit `5a9b91ede61b8b5d5197fd3d6cba72ebace9f655` passed both push workflow `41046236485` and pull-request workflow `41046247755`. Backend Ruff passed; 50 pytest tests passed; Alembic upgrade and downgrade passed. Frontend dependency installation, ESLint, TypeScript, Vitest and Next.js production build passed. Vercel Preview Comments passed with zero unresolved feedback. PR #9 remains open and awaits review/merge. No provider feed is connected and no live data has been imported. This increment does not implement identity-provider-backed authentication, role provisioning, audit retention controls, provider rights validation or a browser upload UI.
+
+
+## 18. Sprint 4 — final CI verification — 2026-10-30
+
+Validated PR #9 head: `5a9b91ede61b8b5d5197fd3d6cba72ebace9f655`.
+
+- Push quality workflow `41046236485`: completed successfully.
+- Pull-request quality workflow `41046247755`: completed successfully.
+- Backend: Ruff passed; 50 pytest tests passed; Alembic upgrade and downgrade passed.
+- Frontend: dependency installation, ESLint, TypeScript, Vitest and Next.js production build passed.
+- Vercel Preview Comments passed; no unresolved feedback was reported.
+- PR #9 is open and unmerged. Merge remains a product-owner action.
+- The first test run exposed duplicate candidate rows and stale batch status due to disabled SQLAlchemy autoflush. Candidate deduplication now preserves all match signals, and the status/count queries explicitly flush before reading. The final test run covers these cases, alias approval, parent-reference validation, duplicate rows, payload limits, and deployment normalization.
+- The admin import API remains disabled until a server-side `REGISTRY_ADMIN_TOKEN` is configured. The supplied reviewer label is not an authenticated user identity; production use still requires identity-provider integration and role-based authorization.
