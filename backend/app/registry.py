@@ -1,7 +1,7 @@
 import re
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app import models, schemas
@@ -160,6 +160,15 @@ def list_supply_groups(db: Session = Depends(get_db)):
 def create_supply_membership(payload: schemas.SupplyMembershipCreate, db: Session = Depends(get_db)):
     _require(db, models.EconomicSupplyGroup, payload.group_id, "Economic supply group")
     _require(db, models.IssuerProduct, payload.issuer_product_id, "Issuer product")
+    overlap = db.scalar(select(models.EconomicSupplyMembership).where(
+        models.EconomicSupplyMembership.issuer_product_id == payload.issuer_product_id,
+        or_(models.EconomicSupplyMembership.effective_to.is_(None),
+            models.EconomicSupplyMembership.effective_to > payload.effective_from),
+        or_(payload.effective_to is None,
+            models.EconomicSupplyMembership.effective_from < payload.effective_to),
+    ))
+    if overlap:
+        raise HTTPException(status_code=409, detail="Product already has an overlapping economic-supply membership.")
     return _create(db, models.EconomicSupplyMembership, payload)
 
 @router.get("/supply-memberships", response_model=list[schemas.SupplyMembershipRead])
@@ -170,6 +179,16 @@ def list_supply_memberships(db: Session = Depends(get_db)):
 def create_classification(payload: schemas.ClassificationCreate, db: Session = Depends(get_db)):
     target_model = {"underlying": models.UnderlyingAsset, "issuer_product": models.IssuerProduct}[payload.entity_type]
     _require(db, target_model, payload.entity_id, payload.entity_type)
+    overlap = db.scalar(select(models.ProductClassification).where(
+        models.ProductClassification.entity_type == payload.entity_type,
+        models.ProductClassification.entity_id == payload.entity_id,
+        or_(models.ProductClassification.effective_to.is_(None),
+            models.ProductClassification.effective_to > payload.effective_from),
+        or_(payload.effective_to is None,
+            models.ProductClassification.effective_from < payload.effective_to),
+    ))
+    if overlap:
+        raise HTTPException(status_code=409, detail="Classification periods for an entity cannot overlap.")
     return _create(db, models.ProductClassification, payload)
 
 @router.get("/classifications", response_model=list[schemas.ClassificationRead])

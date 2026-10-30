@@ -59,3 +59,25 @@ def test_classification_is_versioned_and_periods_do_not_overlap(client):
     overlap = {**base,"effective_from":"2026-05-01","effective_to":"2026-07-01"}
     assert client.post("/api/v1/registry/classifications", json=overlap).status_code == 409
     assert client.get("/api/v1/registry/classifications",params={"entity_type":"issuer_product","entity_id":p["id"]}).json().__len__() == 2
+
+def test_open_ended_classification_period_blocks_later_period(client):
+    _, p = base_product(client)
+    open_period = {"entity_type":"issuer_product","entity_id":p["id"],"classification":"rwa","effective_from":"2026-01-01","source":"issuer source","evidence_ref":"evidence:open"}
+    assert client.post("/api/v1/registry/classifications", json=open_period).status_code == 201
+    later = {**open_period,"effective_from":"2027-01-01","evidence_ref":"evidence:later"}
+    assert client.post("/api/v1/registry/classifications", json=later).status_code == 409
+
+def test_adjacent_classification_periods_are_allowed(client):
+    _, p = base_product(client)
+    first = {"entity_type":"issuer_product","entity_id":p["id"],"classification":"rwa","effective_from":"2026-01-01","effective_to":"2026-06-01","source":"issuer source","evidence_ref":"evidence:first"}
+    second = {**first,"classification":"other","effective_from":"2026-06-01","effective_to":None,"evidence_ref":"evidence:second"}
+    assert client.post("/api/v1/registry/classifications", json=first).status_code == 201
+    assert client.post("/api/v1/registry/classifications", json=second).status_code == 201
+
+def test_open_ended_membership_period_blocks_later_membership(client):
+    _, p = base_product(client)
+    group = client.post("/api/v1/registry/supply-groups", json={"canonical_key":"supply:underlying","display_name":"Supply","methodology_notes":"Evidence controlled."}).json()
+    first = {"group_id":group["id"],"issuer_product_id":p["id"],"membership_type":"native","effective_from":"2026-01-01","evidence_ref":"evidence:membership"}
+    assert client.post("/api/v1/registry/supply-memberships", json=first).status_code == 201
+    later = {**first,"effective_from":"2027-01-01","evidence_ref":"evidence:membership-later"}
+    assert client.post("/api/v1/registry/supply-memberships", json=later).status_code == 409
