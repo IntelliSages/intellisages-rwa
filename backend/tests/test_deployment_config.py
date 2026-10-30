@@ -1,13 +1,32 @@
+import pytest
+from alembic.ddl.impl import DefaultImpl
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.testclient import TestClient
 
 from app import main
+from app.alembic_impl import ExtendedPostgresqlImpl
 from app.database import (
     ALEMBIC_VERSION_NUM_LENGTH,
     ensure_alembic_version_column_length,
     normalise_database_url,
 )
+
+
+
+
+def test_postgresql_alembic_version_table_uses_extended_column():
+    registered_impl = DefaultImpl.get_by_dialect(postgresql_dialect())
+    assert registered_impl is ExtendedPostgresqlImpl
+
+    implementation = object.__new__(registered_impl)
+    table = implementation.version_table_impl(
+        version_table="alembic_version",
+        version_table_schema=None,
+        version_table_pk=True,
+    )
+    assert table.c.version_num.type.length == ALEMBIC_VERSION_NUM_LENGTH
 
 
 def test_postgres_urls_use_psycopg_v3():
@@ -34,15 +53,22 @@ def test_alembic_version_column_widening_is_postgres_only():
     engine.dispose()
 
 
-
-def test_alembic_version_column_widening_alters_and_verifies_postgres():
+def test_alembic_version_column_widening_resolves_and_verifies_exact_table():
     class Result:
+        def __init__(self, value):
+            self.value = value
+
         def scalar_one_or_none(self):
-            return 128
+            return self.value
+
+    class IdentifierPreparer:
+        def quote(self, identifier):
+            return f'"{identifier}"'
 
     class PostgreSQLConnection:
         class Dialect:
             name = "postgresql"
+            identifier_preparer = IdentifierPreparer()
 
         dialect = Dialect()
 
@@ -50,24 +76,27 @@ def test_alembic_version_column_widening_alters_and_verifies_postgres():
             self.statements = []
             self.committed = False
 
-        def exec_driver_sql(self, statement):
-            self.statements.append(statement)
-            return Result()
+        def exec_driver_sql(self, statement, parameters=None):
+            self.statements.append((statement, parameters))
+            if len(self.statements) == 1:
+                return Result("tenant_schema")
+            return Result(128)
 
         def commit(self):
             self.committed = True
 
     connection = PostgreSQLConnection()
     assert ensure_alembic_version_column_length(connection) is True
-    assert "ALTER TABLE IF EXISTS alembic_version" in connection.statements[0]
-    assert "VARCHAR(128)" in connection.statements[0]
+    assert "to_regclass('alembic_version')" in connection.statements[0][0]
+    assert 'ALTER TABLE "tenant_schema".alembic_version' in connection.statements[1][0]
+    assert connection.statements[2][1] == ("tenant_schema",)
     assert connection.committed is True
 
 
-def test_alembic_version_column_widening_fails_if_postgres_width_is_still_short():
+def test_alembic_version_column_widening_handles_fresh_database():
     class Result:
         def scalar_one_or_none(self):
-            return 32
+            return None
 
     class PostgreSQLConnection:
         class Dialect:
@@ -75,15 +104,42 @@ def test_alembic_version_column_widening_fails_if_postgres_width_is_still_short(
 
         dialect = Dialect()
 
-        def exec_driver_sql(self, statement):
+        def exec_driver_sql(self, statement, parameters=None):
             return Result()
+
+    assert ensure_alembic_version_column_length(PostgreSQLConnection()) is False
+
+
+def test_alembic_version_column_widening_fails_if_verification_is_short():
+    class Result:
+        def __init__(self, value):
+            self.value = value
+
+        def scalar_one_or_none(self):
+            return self.value
+
+    class IdentifierPreparer:
+        def quote(self, identifier):
+            return f'"{identifier}"'
+
+    class PostgreSQLConnection:
+        class Dialect:
+            name = "postgresql"
+            identifier_preparer = IdentifierPreparer()
+
+        dialect = Dialect()
+
+        def __init__(self):
+            self.calls = 0
+
+        def exec_driver_sql(self, statement, parameters=None):
+            self.calls += 1
+            return Result("public" if self.calls == 1 else 32)
 
         def commit(self):
             pass
 
-    import pytest
-
-    with pytest.raises(RuntimeError, match="expected VARCHAR\\(128\\)"):
+    with pytest.raises(RuntimeError, match="public.alembic_version.version_num"):
         ensure_alembic_version_column_length(PostgreSQLConnection())
 
 

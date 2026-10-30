@@ -18,42 +18,55 @@ def normalise_database_url(value: str) -> str:
 
 
 def ensure_alembic_version_column_length(connection) -> bool:
-    """Widen Alembic's existing revision column before migrations run.
+    """Widen an existing Alembic version table before version updates.
 
-    Use PostgreSQL's own search_path resolution, matching Alembic's unqualified
-    UPDATE of alembic_version. Do not rely on SQLAlchemy reflection to decide
-    whether the table exists: reflection can inspect a different visible
-    schema when a database has a non-default search_path.
+    Alembic 1.16.1 hardcodes String(32) in its default version-table
+    implementation. This helper widens an already-created table. Fresh
+    databases are handled by the custom Alembic DefaultImpl in migrations/env.py.
     """
     if connection.dialect.name != "postgresql":
         return False
 
+    schema = connection.exec_driver_sql(
+        """
+        SELECT namespace.nspname
+        FROM pg_catalog.pg_class AS relation
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = relation.relnamespace
+        WHERE relation.oid = pg_catalog.to_regclass('alembic_version')
+          AND relation.relkind IN ('r', 'p')
+        """
+    ).scalar_one_or_none()
+
+    if schema is None:
+        return False
+
+    quoted_schema = connection.dialect.identifier_preparer.quote(schema)
     connection.exec_driver_sql(
-        "ALTER TABLE IF EXISTS alembic_version "
+        f"ALTER TABLE {quoted_schema}.alembic_version "
         f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
     )
     connection.commit()
 
-    result = connection.exec_driver_sql(
+    actual_length = connection.exec_driver_sql(
         """
         SELECT character_maximum_length
         FROM information_schema.columns
-        WHERE table_name = 'alembic_version'
+        WHERE table_schema = %s
+          AND table_name = 'alembic_version'
           AND column_name = 'version_num'
-          AND table_schema = ANY(current_schemas(false))
-        ORDER BY array_position(current_schemas(false), table_schema)
-        LIMIT 1
-        """
+        """,
+        (schema,),
     ).scalar_one_or_none()
 
-    # No row means this is a fresh database; Alembic will create the table
-    # using version_num_length=ALEMBIC_VERSION_NUM_LENGTH.
-    if result is not None and result < ALEMBIC_VERSION_NUM_LENGTH:
+    if actual_length is None or actual_length < ALEMBIC_VERSION_NUM_LENGTH:
         raise RuntimeError(
-            "Could not widen alembic_version.version_num: "
-            f"expected VARCHAR({ALEMBIC_VERSION_NUM_LENGTH}), found VARCHAR({result})."
+            "Could not widen Alembic version column "
+            f"{schema}.alembic_version.version_num to "
+            f"VARCHAR({ALEMBIC_VERSION_NUM_LENGTH}); found {actual_length!r}."
         )
-    return result is not None
+
+    return True
 
 
 RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./rwa-intelligence.db")
