@@ -81,6 +81,8 @@ def test_foundations_create_underlyings_and_deduplicated_issuers_with_provenance
     assert underlying["payload"]["canonical_payload"]["asset_type"] == "equity"
     assert underlying["payload"]["source_payload"]["id"] == "nvidia"
     issuer = next(r for r in rows if r["entity_type"] == "issuer")
+    assert issuer["payload"]["canonical_payload"]["provider_name"] == "xStocks"
+    assert "legal_name" not in issuer["payload"]["canonical_payload"]
     assert "legal identity requires independent review" in issuer["payload"]["source_metadata"]["name_semantics"]
 
 
