@@ -184,3 +184,16 @@ The response returns:
 The `total` field is the count of matching registry records, not a provider-complete market universe. A network filter matches only verified product-specific deployments. No price, value, volume, liquidity, supply, performance or perpetual-availability observations are returned. Those fields remain unavailable in the UI until a validated observation/read service is implemented.
 
 The Next.js route `/api/catalogue/tokenized-products` proxies to the backend using server-only `RWA_API_BASE_URL`; it does not expose the upstream API base URL to browser JavaScript.
+
+
+## 8. Implemented CoinGecko RWA market-data routes
+
+The CoinGecko market-data vertical slice is implemented on `feat/coingecko-live-rwa-market-data`; merge/deployment readiness is tracked in PROGRESS.md.
+
+- `GET /api/v1/market-data/coingecko/rwa/latest`: latest complete or partial refresh and its normalized observations.
+- `GET /api/v1/market-data/coingecko/rwa/verified-underlyings`: observations joined only through verified CoinGecko `rwa_id` aliases to canonical underlying entities.
+- `POST /api/v1/market-data/coingecko/rwa/refresh`: synchronous controlled refresh. Requires `X-CoinGecko-Refresh-Token`; the backend requires `COINGECKO_REFRESH_ADMIN_TOKEN` and `COINGECKO_API_KEY`.
+
+The refresh reads `/rwas/list` and paginated `/rwas/markets`, stores immutable raw pages and normalized observations, and records provider/retrieval timestamps and completeness. It does not create or approve canonical identities. The Next.js same-origin proxy is `GET /api/market-data/coingecko/rwa`.
+
+The UI exposes underlying aggregate market data only; it does not copy those aggregates onto individual issuer products. Tickers/liquidity and historical chart endpoints are excluded from this increment and remain unavailable unless the required CoinGecko plan/entitlements are configured and separately implemented.
