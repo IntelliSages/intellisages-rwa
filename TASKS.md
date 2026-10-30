@@ -200,3 +200,13 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [ ] Pass backend Ruff, pytest and Alembic upgrade/downgrade on the final commit.
 - [ ] Pass frontend ESLint, TypeScript, Vitest and Next.js production build on the final commit.
 - [ ] Pass both push and pull-request workflows on the exact final commit before review.
+
+
+## FRONTEND SPRINT 3 — canonical product detail (validation update)
+
+- [x] Backend quality: Ruff, pytest, Alembic upgrade/downgrade — passed on the validated CI head.
+- [x] Frontend quality: dependency install, ESLint, TypeScript, Vitest and Next.js production build — passed on the validated CI head.
+- [x] PR workflow confirmed successful; failed earlier frontend checks were caused by an ambiguous text selector and are superseded.
+- [x] Vercel preview deployment completed successfully.
+- [ ] Confirm latest head check-suite status and final PR review before merge.
+- [ ] Deploy protected backend API and validate end-to-end detail route; Vercel preview currently validates frontend deployment only.
