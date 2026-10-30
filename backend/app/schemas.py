@@ -94,6 +94,9 @@ class AliasCreate(StrictModel):
             raise ValueError("effective_to must be later than effective_from")
         return self
 
+class AliasClose(StrictModel):
+    effective_to: date
+
 class AliasRead(StrictModel):
     provider: str
     namespace: str

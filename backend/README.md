@@ -48,6 +48,7 @@ The API does not infer legal ownership, backing, redemption rights, bridge equiv
 - Venues: POST/GET /api/v1/registry/venues
 - Perpetual contracts: POST/GET /api/v1/registry/perpetual-contracts
 - Provider aliases: POST/GET /api/v1/registry/aliases (effective_from required; effective_to optional)
+- Close an alias period once: PATCH /api/v1/registry/aliases/{alias_id}/close with `effective_to`.
 - Exact alias resolution: GET /api/v1/registry/aliases/resolve?provider=...&namespace=...&external_id=...&as_of=YYYY-MM-DD
 
-This increment deliberately omits update/delete endpoints, provider ingestion, public registration, authentication and market metrics. Registry mutations are administrative and must be protected before any shared environment is exposed.
+This increment deliberately omits general update/delete endpoints, provider ingestion, public registration, authentication and market metrics. The close-period endpoint is the sole controlled temporal correction for aliases. Registry mutations are administrative and must be protected before any shared environment is exposed.

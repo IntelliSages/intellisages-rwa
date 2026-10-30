@@ -140,6 +140,45 @@ def create_alias(payload: schemas.AliasCreate, db: Session = Depends(get_db)):
 def list_aliases(db: Session = Depends(get_db)):
     return _list(db, models.ProviderAlias)
 
+@router.patch("/aliases/{alias_id}/close", response_model=schemas.AliasRead)
+def close_alias(alias_id: str, payload: schemas.AliasClose, db: Session = Depends(get_db)):
+    alias = _require(db, models.ProviderAlias, alias_id, "Provider alias")
+    if alias.effective_to is not None:
+        raise HTTPException(status_code=409, detail="Provider alias is already closed.")
+    if alias.effective_from is not None and payload.effective_to <= alias.effective_from:
+        raise HTTPException(status_code=422, detail="effective_to must be later than effective_from.")
+
+    conditions = [
+        models.ProviderAlias.id != alias.id,
+        models.ProviderAlias.provider == alias.provider,
+        models.ProviderAlias.namespace == alias.namespace,
+        models.ProviderAlias.external_id == alias.external_id,
+        or_(
+            models.ProviderAlias.effective_from.is_(None),
+            models.ProviderAlias.effective_from < payload.effective_to,
+        ),
+    ]
+    if alias.effective_from is not None:
+        conditions.append(
+            or_(
+                models.ProviderAlias.effective_to.is_(None),
+                models.ProviderAlias.effective_to > alias.effective_from,
+            )
+        )
+    conflict = db.scalar(select(models.ProviderAlias).where(*conditions))
+    if conflict:
+        raise HTTPException(status_code=409, detail="Closing this alias would overlap another effective alias period.")
+
+    alias.effective_to = payload.effective_to
+    try:
+        db.commit()
+        db.refresh(alias)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Provider alias history conflicts with an existing record.") from exc
+    return alias
+
+
 @router.get("/aliases/resolve", response_model=schemas.AliasRead)
 def resolve_alias(
     provider: str = Query(min_length=1),

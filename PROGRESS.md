@@ -93,4 +93,4 @@ The merged work does not establish that two products are economically equivalent
 
 ## 9. Effective-dated provider aliases — in progress
 
-Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task. CI has not yet been completed for this increment.
+Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, a controlled close-period endpoint, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task. CI has not yet been completed for this increment.

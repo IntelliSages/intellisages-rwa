@@ -122,10 +122,16 @@ def test_provider_alias_effective_periods_resolve_historical_targets(client):
     first_alias = {
         "provider":"coingecko","namespace":"symbol","external_id":"NVDA",
         "entity_type":"underlying","entity_id":underlying["id"],
-        "effective_from":"2026-01-01","effective_to":"2026-06-01",
+        "effective_from":"2026-01-01",
     }
-    second_alias = {**first_alias,"entity_id":second["id"],"effective_from":"2026-06-01","effective_to":None}
-    assert client.post("/api/v1/registry/aliases", json=first_alias).status_code == 201
+    created = client.post("/api/v1/registry/aliases", json=first_alias)
+    assert created.status_code == 201
+    closed = client.patch(
+        f"/api/v1/registry/aliases/{created.json()['id']}/close",
+        json={"effective_to":"2026-06-01"},
+    )
+    assert closed.status_code == 200
+    second_alias = {**first_alias,"entity_id":second["id"],"effective_from":"2026-06-01"}
     assert client.post("/api/v1/registry/aliases", json=second_alias).status_code == 201
 
     before_change = client.get("/api/v1/registry/aliases/resolve", params={
@@ -165,3 +171,26 @@ def test_provider_alias_requires_valid_effective_period(client):
         "effective_from":"2026-06-01","effective_to":"2026-06-01",
     }
     assert client.post("/api/v1/registry/aliases", json=invalid).status_code == 422
+
+def test_provider_alias_cannot_be_closed_twice_or_before_its_start(client):
+    underlying, _, _ = create_base_entities(client)
+    created = client.post("/api/v1/registry/aliases", json={
+        "provider":"coingecko","namespace":"symbol","external_id":"NVDA",
+        "entity_type":"underlying","entity_id":underlying["id"],
+        "effective_from":"2026-01-01",
+    }).json()
+    invalid = client.patch(
+        f"/api/v1/registry/aliases/{created['id']}/close",
+        json={"effective_to":"2025-12-31"},
+    )
+    assert invalid.status_code == 422
+    closed = client.patch(
+        f"/api/v1/registry/aliases/{created['id']}/close",
+        json={"effective_to":"2026-06-01"},
+    )
+    assert closed.status_code == 200
+    repeated = client.patch(
+        f"/api/v1/registry/aliases/{created['id']}/close",
+        json={"effective_to":"2026-07-01"},
+    )
+    assert repeated.status_code == 409

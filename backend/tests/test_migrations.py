@@ -1,0 +1,40 @@
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, text
+
+
+def test_effective_alias_migration_preserves_legacy_alias_without_inventing_dates(tmp_path, monkeypatch):
+    database_path = tmp_path / "legacy-alias.db"
+    database_url = f"sqlite:///{database_path}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    config = Config("alembic.ini")
+
+    command.upgrade(config, "0002_supply_classification")
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO provider_aliases
+                    (id, provider, namespace, external_id, entity_type, entity_id, evidence_ref, is_verified)
+                VALUES
+                    ('legacy-alias', 'coingecko', 'coin', 'legacy-nvda', 'underlying',
+                     'legacy-underlying', 'legacy-evidence', 0)
+                """
+            )
+        )
+    engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                "SELECT effective_from, effective_to FROM provider_aliases WHERE id = 'legacy-alias'"
+            )
+        ).one()
+        assert row.effective_from is None
+        assert row.effective_to is None
+    engine.dispose()
+
+    command.downgrade(config, "base")
