@@ -3,21 +3,18 @@ import os
 
 from alembic import context
 from alembic.ddl.impl import DefaultImpl
-from sqlalchemy import Column, String, engine_from_config, pool
-from sqlalchemy import PrimaryKeyConstraint
-from sqlalchemy import Table
-from sqlalchemy import MetaData
+from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, String, Table, engine_from_config, pool
 
-from app.models import Base
 from app.database import (
     ALEMBIC_VERSION_NUM_LENGTH,
     ensure_alembic_version_column_length,
     normalise_database_url,
 )
+from app.models import Base
 
 
 class ExtendedVersionTableImpl(DefaultImpl):
-    """Use a version column wide enough for this repository's revision IDs."""
+    """Alembic implementation with a revision column sized for long IDs."""
 
     __dialect__ = "default"
 
@@ -57,6 +54,7 @@ def run_migrations_offline():
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        user_module_prefix="",
         version_table_impl=ExtendedVersionTableImpl,
     )
     with context.begin_transaction():
