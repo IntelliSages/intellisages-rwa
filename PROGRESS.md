@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** PRs #2–#6 are merged. The Home dashboard, Crypto Screener and page-specific workspace layouts are in `main`. Tokenized RWA Screener and the first read-only catalogue API are under implementation on `feat/tokenized-rwa-screener`; final documentation-commit and PR-triggered CI remain mandatory before review.
+**Status:** PR #7 is merged. The Home dashboard, Crypto Screener, page-specific workspaces and Tokenized RWA Screener/catalogue API are in `main`. Sprint 3 product-detail navigation and exact product lookup are in progress on `feat/rwa-product-detail-navigation`; validation and PR review remain pending.
 
 ## 1. Verified implementation evidence
 
@@ -141,3 +141,48 @@ Frontend automated tests cover shared status/provenance disclosures, product ide
 - Updated Vitest JSX transformation to the current Oxc configuration and removed existing unused-import / anonymous-export lint warnings.
 - Local sandbox validation after remediation: 7 frontend tests passed; ESLint passed; TypeScript passed; Next.js production build passed; `npm audit --audit-level=low` reported 0 vulnerabilities.
 - Vercel and GitHub Actions are configured to use Node.js 24.x because npm 10 on Node 22 failed dependency-tree construction (`Cannot read properties of null (reading 'edgesOut')`); npm 11 on Node 24 generated the lockfile and completed dependency audit successfully.\n- The remediation is committed to the Tokenized RWA Screener PR branch. A fresh Vercel preview must still complete successfully before a preview URL is treated as ready. Production deployment remains out of scope.
+
+
+## 13. Sprint 3 — canonical tokenized product detail (in progress)
+
+Branch: `feat/rwa-product-detail-navigation`.
+
+PR #7 is merged. This increment adds:
+- Exact `GET /api/v1/catalogue/tokenized-products/{product_id}` lookup for one currently RWA-classified issuer product.
+- Effective-date filtering and a strict 404 for unknown IDs, symbol-only lookups and products without an effective RWA classification.
+- Product detail payload containing issuer and underlying identity, classification source/evidence, provider-global inclusion state, and product-level deployment records.
+- A same-origin Next.js proxy route and a canonical product detail page linked from each screener result.
+- Explicitly unavailable market metrics; registry identity and classification do not imply live market coverage, legal verification or asset backing.
+
+**Validation status:** implementation has been committed to the feature branch. Backend Ruff/pytest/Alembic, frontend ESLint/TypeScript/Vitest/production build and both GitHub Actions workflows are not yet verified for this increment. Do not mark the work complete until those checks pass on the final commit.
+
+
+## 14. Sprint 3 CI investigation — 2026-10-30
+
+PR #8 frontend pull-request and push jobs failed in the Vitest step only. Dependency installation, ESLint and TypeScript completed successfully; the production-build step was skipped because tests failed. Backend quality succeeded in both trigger contexts.
+
+Root cause from both job logs: `tests/tokenized-rwa-screener.test.tsx` used `screen.getByText(/NVDAx/)`, which became ambiguous after the screener correctly added an anchor to the canonical detail route while retaining the symbol label. The test now asserts the accessible link name and exact destination `/tokenized-rwa-screener/product-a`, and separately verifies the issuer text. This preserves the intended navigation behaviour instead of suppressing the duplicate-match failure.
+
+Vercel preview deployment for the feature branch completed with state READY. This confirms the frontend build/deploy path, not backend connectivity or full application data readiness.
+
+
+## 15. Sprint 3 CI remediation confirmed — 2026-10-30
+
+- Root cause: frontend test used an ambiguous text query `getByText(/NVDAx/)` after the product name became a canonical detail link and remained alongside the symbol label.
+- Correction: test now asserts the accessible link by role/name and exact route `/tokenized-rwa-screener/product-a`, plus the issuer display.
+- CI rerun on commit `66f66f78b15ef5b3e1ef8106fcea4a977559f0e7` completed successfully: Backend quality passed; Frontend quality passed dependency installation, ESLint, TypeScript, Vitest and Next.js production build.
+- The original failing run is superseded by the successful PR-triggered run `40999586576`. Vercel Preview Comments passed.
+- The Vercel preview deployment is READY for the PR head. Backend hosting/configuration remains a separate dependency; a successful frontend preview does not make the API live.
+
+
+## 16. Final verification of PR #8 — 2026-10-30
+
+Validated PR head: `47d9ba0d580f65688206bb4a6b9000deebd7c5e1`.
+
+- Pull-request quality workflow `40999685045`: completed successfully.
+- Push quality workflow `40999682515`: completed successfully.
+- Frontend quality: dependency installation, ESLint, TypeScript, Vitest and Next.js production build all passed.
+- Backend quality: dependency installation, Ruff, pytest and Alembic migration verification all passed.
+- Vercel deployment for the validated head: READY; preview comments report zero unresolved feedback.
+- No open inline review threads or review submissions were returned for PR #8.
+- The initial red checks were caused by one ambiguous Testing Library text query following intentional link navigation; the test was corrected to assert the canonical link route.

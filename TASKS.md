@@ -187,3 +187,26 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 - [ ] Pass frontend dependency install, ESLint, TypeScript, unit tests and Next.js production build on final commit.
 - [ ] Pass both push and pull-request workflows on the exact final commit before marking the PR ready.
 - [ ] Connect a protected/shared backend deployment and validate live catalogue requests after access-control review.
+
+
+## FRONTEND SPRINT 3 — Canonical tokenized product detail
+
+- [x] Add exact-ID backend detail lookup for effective RWA-classified issuer products.
+- [x] Return issuer, underlying, classification provenance and product-level deployments.
+- [x] Return 404 for unknown IDs, ticker/symbol lookups and non-effective RWA classifications.
+- [x] Add same-origin frontend API proxy for product detail.
+- [x] Add canonical product detail route and screener navigation links.
+- [x] Keep market metrics explicitly unavailable until validated observations exist.
+- [ ] Pass backend Ruff, pytest and Alembic upgrade/downgrade on the final commit.
+- [ ] Pass frontend ESLint, TypeScript, Vitest and Next.js production build on the final commit.
+- [ ] Pass both push and pull-request workflows on the exact final commit before review.
+
+
+## FRONTEND SPRINT 3 — canonical product detail (validation update)
+
+- [x] Backend quality: Ruff, pytest, Alembic upgrade/downgrade — passed on the validated CI head.
+- [x] Frontend quality: dependency install, ESLint, TypeScript, Vitest and Next.js production build — passed on the validated CI head.
+- [x] PR workflow confirmed successful; failed earlier frontend checks were caused by an ambiguous text selector and are superseded.
+- [x] Vercel preview deployment completed successfully.
+- [ ] Confirm latest head check-suite status and final PR review before merge.
+- [ ] Deploy protected backend API and validate end-to-end detail route; Vercel preview currently validates frontend deployment only.

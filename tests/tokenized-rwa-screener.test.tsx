@@ -66,7 +66,9 @@ describe("Tokenized RWA screener", () => {
     render(<TokenizedRwaScreener />);
 
     expect(await screen.findByText("NVIDIA")).toBeInTheDocument();
-    expect(screen.getByText(/NVDAx/)).toBeInTheDocument();
+    const productLink = screen.getByRole("link", { name: "NVDAx" });
+    expect(productLink).toHaveAttribute("href", "/tokenized-rwa-screener/product-a");
+    expect(screen.getByText(/Issuer A/)).toBeInTheDocument();
     expect(screen.getByText("Ethereum")).toBeInTheDocument();
     expect(screen.getByText("1 pending")).toBeInTheDocument();
     expect(screen.getByLabelText(/Tokenized price: unavailable/)).toBeInTheDocument();
