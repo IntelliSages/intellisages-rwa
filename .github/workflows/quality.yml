@@ -34,7 +34,23 @@ jobs:
   backend:
     name: Backend quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: intellisages_rwa_test
+          POSTGRES_USER: intellisages_rwa_test
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U intellisages_rwa_test -d intellisages_rwa_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_POSTGRES_URL: postgresql+psycopg://intellisages_rwa_test:test-password@localhost:5432/intellisages_rwa_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
