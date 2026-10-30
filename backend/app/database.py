@@ -18,67 +18,53 @@ def normalise_database_url(value: str) -> str:
 
 
 def ensure_alembic_version_column_length(connection) -> bool:
-    """Widen every existing Alembic revision column before migrations run.
+    """Widen the exact Alembic version table resolved by PostgreSQL search_path.
 
-    PostgreSQL permits multiple schemas to contain an alembic_version table.
-    Alembic's unqualified version-table UPDATE resolves through search_path,
-    while an ALTER against only one visible table can leave a shadowed table
-    at VARCHAR(32). Widen all matching application-schema tables so the
-    column Alembic resolves cannot remain undersized.
+    Resolve the same unqualified relation name Alembic uses, then alter it by
+    its explicit schema-qualified name. This avoids changing unrelated schemas
+    and guarantees that the table Alembic will update is the one verified here.
     """
     if connection.dialect.name != "postgresql":
         return False
 
+    schema = connection.exec_driver_sql(
+        """
+        SELECT namespace.nspname
+        FROM pg_catalog.pg_class AS relation
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = relation.relnamespace
+        WHERE relation.oid = pg_catalog.to_regclass('alembic_version')
+          AND relation.relkind IN ('r', 'p')
+        """
+    ).scalar_one_or_none()
+
+    # On a fresh database Alembic creates this table using version_num_length.
+    if schema is None:
+        return False
+
+    quoted_schema = connection.dialect.identifier_preparer.quote(schema)
     connection.exec_driver_sql(
-        """
-        DO $alembic_version_width$
-        DECLARE
-            version_table RECORD;
-        BEGIN
-            FOR version_table IN
-                SELECT table_schema
-                FROM information_schema.columns
-                WHERE table_name = 'alembic_version'
-                  AND column_name = 'version_num'
-                  AND table_schema NOT IN ('pg_catalog', 'information_schema')
-            LOOP
-                EXECUTE format(
-                    'ALTER TABLE %I.%I ALTER COLUMN %I TYPE VARCHAR(%s)',
-                    version_table.table_schema,
-                    'alembic_version',
-                    'version_num',
-                    128
-                );
-            END LOOP;
-        END
-        $alembic_version_width$;
-        """
+        f"ALTER TABLE {quoted_schema}.alembic_version "
+        f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
     )
     connection.commit()
 
-    remaining_short_columns = connection.exec_driver_sql(
+    actual_length = connection.exec_driver_sql(
         """
-        SELECT table_schema, character_maximum_length
+        SELECT character_maximum_length
         FROM information_schema.columns
-        WHERE table_name = 'alembic_version'
+        WHERE table_schema = %s
+          AND table_name = 'alembic_version'
           AND column_name = 'version_num'
-          AND table_schema NOT IN ('pg_catalog', 'information_schema')
-          AND (
-              character_maximum_length IS NULL
-              OR character_maximum_length < %s
-          )
         """,
-        (ALEMBIC_VERSION_NUM_LENGTH,),
-    ).all()
+        (schema,),
+    ).scalar_one_or_none()
 
-    if remaining_short_columns:
-        details = ", ".join(
-            f"{schema}.alembic_version.version_num VARCHAR({length})"
-            for schema, length in remaining_short_columns
-        )
+    if actual_length is None or actual_length < ALEMBIC_VERSION_NUM_LENGTH:
         raise RuntimeError(
-            "Could not widen all Alembic version columns to "
-            f"VARCHAR({ALEMBIC_VERSION_NUM_LENGTH}): {details}."
+            "Could not widen Alembic version column "
+            f"{schema}.alembic_version.version_num to "
+            f"VARCHAR({ALEMBIC_VERSION_NUM_LENGTH}); found {actual_length!r}."
         )
 
     return True
