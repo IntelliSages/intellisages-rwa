@@ -109,7 +109,7 @@ def get_verified_underlying_market_data(db: Session = Depends(get_db)):
     }
 
 
-@router.post("/rwa/refresh", status_code=202)
+@router.post("/rwa/refresh", status_code=200)
 def refresh_rwa_market_data(
     x_coingecko_refresh_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
