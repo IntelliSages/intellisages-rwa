@@ -1,35 +1,37 @@
 # RWAs Intelligence — Engineering Task Register
 
 **Governing baseline:** [MVP_IMPLEMENTATION_BLUEPRINT.md](MVP_IMPLEMENTATION_BLUEPRINT.md).  
-**Status:** initial work breakdown. Tasks are not complete until evidence is linked in PROGRESS.md.
+**Status:** implementation in progress. Completion requires merged code and linked executed evidence in PROGRESS.md.
 
 Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!] blocked.
 
 ## EPIC 0 — MVP freeze, repository and prototype baseline
 
-- [ ] Freeze the 16 approved pages and page-level launch qualifications from the MVP blueprint.
-- [ ] Record repository tree, default branch, commit, framework, dependencies and scripts.
-- [ ] Inspect frontend routes/components/state/API calls/mock fixtures.
-- [ ] Inspect backend services, migrations, jobs, secrets and deployment configuration.
-- [ ] Inspect CI, lint, typecheck, unit/integration/e2e tests and coverage.
+- [x] Freeze the 16 approved pages and page-level launch qualifications in the MVP blueprint.
+- [x] Record repository tree, default branch, framework, dependencies and scripts.
+- [~] Inspect frontend routes/components/state/API calls/mock fixtures.
+- [~] Inspect backend services, migrations, jobs, secrets and deployment configuration.
+- [x] Inspect CI, lint, typecheck, unit/integration/e2e tests and coverage baseline.
 - [ ] Inventory every mock page, tab, control, metric, navigation target and modal.
-- [ ] Separate approved MVP, current baseline, removed features and deferred scope.
+- [x] Separate approved MVP, current baseline, removed features and deferred scope.
 - [ ] Convert inherited QA-01–QA-10 into tracked acceptance tests.
 - [ ] Establish per-page/per-metric readiness register and provider evidence inventory.
 - [ ] Record security, licensing, accessibility and operational risks.
 
 ## EPIC 1 — Canonical identity and classification registry
 
-- [ ] Define canonical entities/IDs for underlying, issuer, issuer product, network, deployment, venue, spot market, perp contract, pool, loan market and provider alias.
+- [~] Define canonical entities/IDs for underlying, issuer, issuer product, network, deployment, venue, perp contract and provider alias.
 - [ ] Add effective-dated provider aliases, symbol/name aliases and contract migrations.
-- [ ] Add representation type: independent issuance, bridge/wrapper or unknown.
+- [~] Add representation type: independent issuance, bridge/wrapper or unknown.
 - [ ] Add economic-supply groups and evidence references.
 - [ ] Add versioned classification registry and provider-global inclusion evidence.
-- [ ] Add exact builder/domain/market identity for perpetual contracts.
+- [x] Add exact builder/domain/market identity for perpetual contracts.
 - [ ] Add registry import/reconciliation and unresolved mapping workflow.
-- [ ] Test NVIDIA/NVDAx/NVDAon, duplicate tickers, bridge and multi-network cases.
-- [ ] Verify deployment per product; never infer all issuer products exist on all issuer-supported networks.
-- [ ] Ensure unknown IDs return not found, never a default asset.
+- [~] Test NVIDIA/NVDAx/NVDAon distinction, duplicate issuer-native IDs, EVM normalization, non-EVM case preservation and exact alias resolution.
+- [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
+- [x] Ensure unknown IDs return not found, never a default asset.
+
+**Current slice:** FastAPI + SQLAlchemy 2.x + Alembic, PostgreSQL target for shared environments, SQLite isolated to tests. PR #2 has passing frontend/backend CI but is not merged. Remaining EPIC 1 items are listed in docs/IDENTITY_REGISTRY.md.
 
 ## EPIC 2 — Provider adapters, rights and ingestion
 

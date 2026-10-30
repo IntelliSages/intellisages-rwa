@@ -1,4 +1,4 @@
-name: Frontend quality gates
+name: Application quality gates
 on:
   push:
     branches: [main, "feat/**"]
@@ -7,10 +7,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: frontend-quality-${{ github.workflow }}-${{ github.ref }}
+  group: application-quality-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  quality:
+  frontend:
+    name: Frontend quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -18,13 +19,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Generate and verify lockfile
+      - name: Generate lockfile
         run: npm install --package-lock-only --ignore-scripts
-      - name: Install locked dependencies
+      - name: Install dependencies
         run: npm ci
-      - name: Lint
+      - name: ESLint
         run: npm run lint
-      - name: Type check
+      - name: TypeScript
         run: npm run typecheck
       - name: Production build
         run: npm run build
+  backend:
+    name: Backend quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Lint backend
+        run: ruff check backend/app backend/tests backend/migrations
+      - name: Test backend
+        working-directory: backend
+        run: pytest -q
+      - name: Verify database migration
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./migration-check.db
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          rm -f migration-check.db
