@@ -6,10 +6,15 @@ RWAs Intelligence connects asset discovery, issuer products, blockchain deployme
 
 > **Product principle:** a number is useful only when its meaning, identity, scope, time and coverage are clear. Partial or missing observations must remain visible; a successful API response is not proof of complete market coverage.
 
+## Governing MVP plan
+
+**[MVP_IMPLEMENTATION_BLUEPRINT.md](MVP_IMPLEMENTATION_BLUEPRINT.md) is the governing implementation baseline.** It defines the 16-page MVP, launch qualifications, shared behaviours, provider tiers, metric readiness, implementation work packages, inherited QA defects, acceptance gates and post-launch phases. Changes to approved scope or gates require product-owner approval.
+
 ## Documentation map
 
 | Document | Purpose |
 |---|---|
+| [MVP_IMPLEMENTATION_BLUEPRINT.md](MVP_IMPLEMENTATION_BLUEPRINT.md) | Governing MVP scope, delivery sequence, launch gates and operating plan |
 | [RULES.md](RULES.md) | Binding identity, metric, evidence, aggregation, safety and implementation rules |
 | [PRD.md](PRD.md) | Product vision, users, MVP scope, journeys and functional requirements |
 | [ROADMAP.md](ROADMAP.md) | Delivery phases, dependencies, milestones and release gates |
@@ -28,33 +33,24 @@ RWAs Intelligence connects asset discovery, issuer products, blockchain deployme
 
 ## Product scope
 
-The supplied MVP inventory includes Home, Crypto Screener, Tokenized RWA Screener, Correlation, HIP-3, Ondo, bStocks, xStocks, Backpack, Robinhood Tokenized Assets, PreStocks, Paimon, Funding Rates, DeFi, Trader Intelligence and Event Feed.
+The approved MVP includes 16 pages: Home, Crypto Screener, Tokenized RWA Screener, Correlation, HIP-3, Ondo, bStocks, xStocks, Backpack, Robinhood Tokenized Assets, PreStocks, Paimon, Funding Rates, DeFi, Trader Intelligence and Intelligence Event Feed.
 
-The detailed page and metric scope is governed by PRD.md, FRONTEND_SPEC.md and DATA_DICTIONARY.md. A feature being visible in a mockup does not prove its backend is implemented or its data is production-ready.
+A page may remain visible with specific metrics unavailable or restricted. See the governing blueprint and PRD for page-level launch qualifications and explicit exclusions.
 
 ## Current status
 
-Documentation is being established from the product-owner brief, supplied MVP review HTML, Home specification, shared metric dictionary, identity/aggregation rules, provider endpoint registry and backend-contract proposal.
-
-**No production implementation, deployed backend, live collector, complete universe coverage, production API entitlement or passing integration test is asserted by these documents.** See PROGRESS.md and VALIDATION_MATRIX.md for evidence-based status.
+Documentation defines the intended product and implementation process; it does not prove production implementation, live collectors, complete universe coverage, provider entitlement or passing integration tests. See PROGRESS.md and VALIDATION_MATRIX.md.
 
 ## Engineering approach
 
-1. Preserve approved product decisions and source evidence.
-2. Audit the actual repository and prototype before choosing or replacing a stack.
-3. Build canonical identity and data-quality foundations before market-wide aggregation.
-4. Implement provider adapters independently from domain calculations and UI.
-5. Serve typed, provenance-aware read models; never let the UI infer missing data as zero.
-6. Deliver incrementally, with reproducible fixtures, regression tests and release gates.
-
-## External research references
-
-- [CoinGecko API](https://www.coingecko.com/en/api) — crypto, tokenized RWA, onchain and historical market-data families.
-- [Hyperliquid HIP-3](https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-3-builder-deployed-perpetuals) — builder-deployed perp DEX and market context.
-- [Hyperliquid perpetual API](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals) — native perp market data and builder-specific request context.
-- [ERC-3643 specification](https://eips.ethereum.org/EIPS/eip-3643) — permissioned token transfer and identity/compliance interfaces; a technical standard is not legal approval.
-- [ERC-3643 overview](https://www.erc3643.org/the-standard) — identity and compliance concepts.
+1. Follow MVP_IMPLEMENTATION_BLUEPRINT.md as the implementation sequence and scope baseline.
+2. Preserve approved product decisions and source evidence.
+3. Audit the actual repository and prototype before selecting or replacing technology.
+4. Build canonical identity and data-quality foundations before market-wide aggregation.
+5. Implement provider adapters independently from domain calculations and UI.
+6. Serve typed, provenance-aware read models; never let the UI infer missing data as zero.
+7. Deliver incrementally, with reproducible fixtures, regression tests and release gates.
 
 ## Working agreement
 
-Classify every new statement as **approved product decision**, **retained source evidence**, **proposal**, **unverified assumption**, **deferred scope** or **implementation result**. Update relevant documents together and keep the progress log honest.
+Classify every new statement as **approved product decision**, **retained source evidence**, **proposal**, **unverified assumption**, **deferred scope** or **implementation result**. Update related documents together and keep the progress log honest.
