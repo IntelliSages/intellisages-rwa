@@ -39,7 +39,7 @@ A page may remain visible with specific metrics unavailable or restricted. See t
 
 ## Current status
 
-Documentation defines the intended product and implementation process; it does not prove production implementation, live collectors, complete universe coverage, provider entitlement or passing integration tests. See PROGRESS.md and VALIDATION_MATRIX.md.
+PR #6 has delivered the first frontend shell and page-layout pass. The Tokenized RWA Screener and read-only catalogue API are the current implementation increment. No live market observations, provider-complete universe, production provider entitlements or shared deployment are asserted. See PROGRESS.md and VALIDATION_MATRIX.md.
 
 ## Engineering approach
 

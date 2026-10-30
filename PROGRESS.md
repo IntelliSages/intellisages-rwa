@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation and canonical identity registry increments PRs #2, #3 and #4 are merged. Perpetual contract migration history is implemented on `feat/perpetual-contract-migration-history`; initial implementation CI passed on commit `8289736fe72924855c16d47be4fd3401d0613355`. Final documentation-commit and PR-triggered CI remain mandatory before review.
+**Status:** PRs #2–#6 are merged. The Home dashboard, Crypto Screener and page-specific workspace layouts are in `main`. Tokenized RWA Screener and the first read-only catalogue API are under implementation on `feat/tokenized-rwa-screener`; final documentation-commit and PR-triggered CI remain mandatory before review.
 
 ## 1. Verified implementation evidence
 
@@ -130,4 +130,4 @@ Implementation branch: `feat/tokenized-rwa-screener`.
 
 This increment adds a dedicated Tokenized RWA Screener page, shared availability/provenance components, a same-origin Next.js API proxy, and a read-only FastAPI catalogue endpoint. The endpoint returns effective RWA-classified registry products once each, joins underlying and issuer identity, exposes classification evidence, lists product-level deployment records and applies network filters only to verified deployments. Registry counts are explicitly not represented as provider-complete universe coverage. Market metrics remain unavailable because no validated observations are connected.
 
-Frontend automated tests cover shared status/provenance disclosures, product identity display, deployment expansion, verified-network filter requests and API-not-configured state. Backend tests cover product distinctness, effective classification, verified-network filtering, search, facets, pagination and input validation. This increment must pass final push and PR quality workflows before it is marked ready for review.
+Frontend automated tests cover shared status/provenance disclosures, product identity display, deployment expansion, verified-network filter requests and API-not-configured state. Backend tests cover product distinctness, effective classification, verified-network filtering, search, facets, pagination and input validation. Implementation commit `00cf89fb6ca9e3e330eeb2bd74efad09a25f4691` passed push workflow `40991605769`: backend Ruff, 33 pytest tests and Alembic upgrade/downgrade passed; frontend dependency install, ESLint, TypeScript, 7 Vitest tests and Next.js production build passed. The final documentation commit and PR-triggered workflow remain required before review.

@@ -1,6 +1,6 @@
 # Backend — RWAs Intelligence API
 
-First backend increment: a canonical identity registry. It is not a market-data API and contains no seeded/mock assets.
+The backend provides a canonical identity registry and a read-only tokenized-product catalogue. It is not a market-data API and contains no seeded/mock assets.
 
 ## Requirements
 

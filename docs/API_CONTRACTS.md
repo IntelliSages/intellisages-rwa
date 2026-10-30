@@ -1,6 +1,6 @@
 # Proposed Backend API Contracts
 
-**Status:** logical internal contracts for engineering. These are not deployed routes, generated OpenAPI or tested schemas. Transport, route naming and framework remain subject to repository audit.
+**Status:** most contracts below remain logical proposals, not deployed routes. The tokenized-product catalogue in section 7 is implemented and tested; it does not provide provider ingestion or market observations.
 
 ## 1. Contract principles
 

@@ -84,6 +84,6 @@ A read-only `GET /api/v1/catalogue/tokenized-products` service now joins current
 - Spot-market, pool and lending-market identities.
 - Registry bulk import, reconciliation and unresolved-mapping workflow.
 - Authentication/authorization and audit logging for registry mutations.
-- Provider ingestion, source observations, market metrics or frontend integration.
+- Provider ingestion, normalized source observations and market metrics.
 
 The registry must not be exposed as a public write API until authentication, authorization, audit logging and operational controls are implemented.

@@ -144,7 +144,7 @@ export function TokenizedRwaScreener() {
     </section>
 
     <section className={styles.metrics}>
-      <article><span>Registered RWA products</span><strong>{data ? data.total.toLocaleString() : "—"}</strong><small>{data ? "Matching registry records" : "Awaiting catalogue response"}</small></article>
+      <article><span>Matching registry products</span><strong>{data ? data.total.toLocaleString() : "—"}</strong><small>{data ? "Current filters · registry only" : "Awaiting catalogue response"}</small></article>
       <article><span>Products on this page</span><strong>{data ? data.items.length.toLocaleString() : "—"}</strong><small>Current result page · max {PAGE_SIZE}</small></article>
       <article><span>Verified network facets</span><strong>{data ? data.facets.networks.length.toLocaleString() : "—"}</strong><small>Networks with verified product deployments</small></article>
       <article><span>Market observations</span><strong className={styles.pendingValue}>Not connected</strong><small>Not inferred from identity records</small></article>
@@ -206,7 +206,7 @@ function FragmentRow({product,expanded,onToggle}:{product:TokenizedProductCatalo
   return <>
     <tr className={styles.productRow}>
       <td className={styles.identityCell}><button type="button" className={styles.expand} aria-expanded={expanded} aria-label={`${expanded?"Collapse":"Expand"} ${product.display_name} details`} onClick={onToggle}>{expanded?<ChevronDown size={15}/>:<ChevronRight size={15}/>}</button><span><b>{product.underlying.display_name}</b><small>{product.display_name}{product.symbol? ` · ${product.symbol}`:""} · {product.issuer.legal_name}</small><code>{product.id}</code></span></td>
-      <td><span className={styles.assetClass}>RWA</span></td>
+      <td><span className={styles.assetClass}>{product.underlying.asset_type.replaceAll("_", " ")}</span></td>
       <td><div className={styles.networkChips}>{verified.length?verified.map(deployment=><span key={deployment.id}>{deployment.network.display_name}</span>):<small>No verified deployment</small>}</div>{product.unverified_deployment_count>0&&<small className={styles.pendingCount}>{product.unverified_deployment_count} pending</small>}</td>
       <td><MetricUnavailable label="Tokenized price" reason="No validated tokenized price observation is connected to this product." /></td>
       <td><MetricUnavailable label="Tokenized value" reason="Supply, unit conversion and non-overlapping economic-supply methodology are not yet connected." /></td>

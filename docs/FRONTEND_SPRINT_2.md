@@ -51,3 +51,11 @@ Frontend tests cover:
 - There is no provider ingestion or normalized market-observation store yet.
 - The current registry's write routes remain administrative and unauthenticated; do not expose registry mutation routes on a shared/public deployment.
 - Deployment evidence is not a full legal/backing review. A verified deployment flag is a registry verification state only.
+
+## Initial implementation validation
+
+Commit `00cf89fb6ca9e3e330eeb2bd74efad09a25f4691` passed push workflow `40991605769`:
+- Backend: Ruff passed, 33 tests passed, Alembic upgrade/downgrade passed.
+- Frontend: dependency installation, ESLint, TypeScript, 7 unit tests and production build passed.
+
+The final documentation commit and PR-triggered workflow are separate required gates.
