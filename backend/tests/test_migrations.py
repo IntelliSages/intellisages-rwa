@@ -159,8 +159,10 @@ def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monk
 
 
 
+
 def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
     import os
+    from urllib.parse import quote
 
     import pytest
     from sqlalchemy import create_engine, text
@@ -172,24 +174,24 @@ def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
     if not database_url:
         pytest.skip("TEST_POSTGRES_URL is not configured")
 
-    url = make_url(database_url)
+    base_url = make_url(database_url)
     schema_name = f"alembic_fresh_{uuid.uuid4().hex[:10]}"
     engine = create_engine(database_url)
     schema_engine = None
 
     try:
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             connection.exec_driver_sql(f'CREATE SCHEMA "{schema_name}"')
-            connection.commit()
-        with schema_engine.connect() as connection:
-            connection.exec_driver_sql(f'SET search_path TO "{schema_name}", public')
-            connection.commit()
 
-        # Keep the test URL's driver and credentials unchanged. Set search_path
-        # on the isolated test connection itself so URL parsing cannot alter it.
-        schema_engine = create_engine(database_url)
+        # PostgreSQL libpq options set search_path for every new connection,
+        # including the independent connection Alembic creates in env.py.
+        options = f"-csearch_path={schema_name},public"
+        schema_url = base_url.update_query_dict({"options": options})
+        schema_engine = create_engine(schema_url)
+
         config = Config("alembic.ini")
-        monkeypatch.setenv("DATABASE_URL", database_url)
+        # ConfigParser treats percent signs as interpolation markers.
+        monkeypatch.setenv("DATABASE_URL", str(schema_url).replace("%", "%%"))
 
         command.upgrade(config, "head")
 
@@ -206,9 +208,7 @@ def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
                 ),
                 {"schema_name": schema_name},
             ).scalar_one()
-            revision = connection.execute(
-                text(f'SELECT version_num FROM "{schema_name}".alembic_version')
-            ).scalar_one()
+            revision = connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar_one()
             assert width == ALEMBIC_VERSION_NUM_LENGTH
             assert revision == "0006_provider_ingestion_runs"
 
@@ -216,7 +216,6 @@ def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
     finally:
         if schema_engine is not None:
             schema_engine.dispose()
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             connection.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
-            connection.commit()
         engine.dispose()
