@@ -173,3 +173,16 @@ Vercel preview deployment for the feature branch completed with state READY. Thi
 - CI rerun on commit `66f66f78b15ef5b3e1ef8106fcea4a977559f0e7` completed successfully: Backend quality passed; Frontend quality passed dependency installation, ESLint, TypeScript, Vitest and Next.js production build.
 - The original failing run is superseded by the successful PR-triggered run `40999586576`. Vercel Preview Comments passed.
 - The Vercel preview deployment is READY for the PR head. Backend hosting/configuration remains a separate dependency; a successful frontend preview does not make the API live.
+
+
+## 16. Final verification of PR #8 — 2026-10-30
+
+Validated PR head: `47d9ba0d580f65688206bb4a6b9000deebd7c5e1`.
+
+- Pull-request quality workflow `40999685045`: completed successfully.
+- Push quality workflow `40999682515`: completed successfully.
+- Frontend quality: dependency installation, ESLint, TypeScript, Vitest and Next.js production build all passed.
+- Backend quality: dependency installation, Ruff, pytest and Alembic migration verification all passed.
+- Vercel deployment for the validated head: READY; preview comments report zero unresolved feedback.
+- No open inline review threads or review submissions were returned for PR #8.
+- The initial red checks were caused by one ambiguous Testing Library text query following intentional link navigation; the test was corrected to assert the canonical link route.
