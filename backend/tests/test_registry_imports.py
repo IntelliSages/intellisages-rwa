@@ -255,3 +255,46 @@ def test_create_new_product_rejects_unknown_parent_references(client):
         "action": "create_new", "reviewer": "reviewer", "evidence_ref": "evidence:product"})
     assert response.status_code == 404
     assert client.get("/api/v1/registry/products").json() == []
+
+
+
+def test_network_import_envelope_preserves_provider_payload_and_creates_canonical_network(client):
+    batch = stage(client, [row("network", "ethereum", {
+        "canonical_payload": {"namespace": "eip155:1", "display_name": "Ethereum", "family": "evm"},
+        "source_payload": {"platform_slug": "ethereum", "chain_id": "eip155:1"},
+        "source_metadata": {"provider": "coingecko", "mapping_basis": "explicit"}
+    }, "platform_slug")], source="coingecko").json()
+    record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
+    assert record["payload"]["source_payload"]["platform_slug"] == "ethereum"
+    approved = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
+        "action": "create_new", "reviewer": "reviewer", "evidence_ref": "https://docs.coingecko.com/reference/rwa-list"})
+    assert approved.status_code == 200
+    networks = client.get("/api/v1/registry/networks").json()
+    assert len(networks) == 1 and networks[0]["namespace"] == "eip155:1"
+    aliases = [a for a in client.get("/api/v1/registry/aliases").json()
+               if a["provider"] == "coingecko" and a["namespace"] == "platform_slug"]
+    assert len(aliases) == 1 and aliases[0]["is_verified"] is True
+
+
+def test_provider_run_coverage_is_persisted_and_completed_runs_are_immutable(client):
+    created = client.post("/api/v1/registry/provider-runs", json={
+        "provider": "coingecko", "dataset": "tokenized-rwa-catalogue",
+        "source_version": "2026-10-30T12:00:00Z", "started_by": "operator",
+        "manifest_sha256": "a" * 64, "coverage": {"provider_rwa_list_count": 647}
+    })
+    assert created.status_code == 201
+    run_id = created.json()["id"]
+    updated = client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "completed", "coverage": {"provider_rwa_list_count": 647, "details": 647},
+        "staged_batch_ids": ["batch-a", "batch-b"]
+    })
+    assert updated.status_code == 200
+    assert updated.json()["coverage"]["details"] == 647
+    assert updated.json()["staged_batch_ids"] == ["batch-a", "batch-b"]
+    assert client.patch(f"/api/v1/registry/provider-runs/{run_id}", json={
+        "status": "partial"
+    }).status_code == 409
+
+
+def test_provider_run_routes_require_admin_token(client):
+    assert TestClient(app).get("/api/v1/registry/provider-runs").status_code == 401

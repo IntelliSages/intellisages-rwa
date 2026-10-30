@@ -176,6 +176,9 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
     list_hash = sha256_bytes((output_dir / "rwas-list.json").read_bytes())
 
     issuer_rows: list[dict[str, Any]] = []
+    issuer_list_path = output_dir / "issuers-list.json"
+    if issuer_list_path.exists():
+        issuer_list_path.unlink()
     issuer_list_error = None
     try:
         issuer_rows = _list_payload(client.get_json(ISSUER_LIST_PATH), ISSUER_LIST_PATH)
@@ -186,7 +189,17 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
     selected = rwa_list[:limit] if limit else rwa_list
     prior_manifest_path = output_dir / "manifest.json"
     prior = _read_json(prior_manifest_path) if prior_manifest_path.exists() else {}
-    can_resume = prior.get("rwa_list_sha256") == list_hash and not refresh_details
+    can_resume = (
+        prior.get("rwa_list_sha256") == list_hash
+        and prior.get("requested_rwa_count") == len(selected)
+        and not refresh_details
+        and bool(prior.get("retrieved_at"))
+    )
+    if prior.get("staged_phases") and not can_resume:
+        raise RuntimeError("This snapshot has staged imports. Use a new output directory for a new source snapshot.")
+    if not can_resume:
+        for stale in detail_dir.glob("*.json"):
+            stale.unlink()
     detail_errors: list[dict[str, str]] = []
     details_succeeded = 0
     for index, item in enumerate(selected, start=1):
@@ -220,7 +233,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
     for path in [output_dir / "rwas-list.json", output_dir / "issuers-list.json", *sorted(detail_dir.glob("*.json"))]:
         if path.exists():
             files[str(path.relative_to(output_dir))] = sha256_bytes(path.read_bytes())
-    retrieved_at = utc_now()
+    retrieved_at = prior.get("retrieved_at") if can_resume else utc_now()
     manifest = {
         "provider": PROVIDER,
         "dataset": DATASET,
@@ -343,7 +356,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         }
         rows.append({
             "entity_type": "underlying", "source_namespace": "rwa_id", "external_id": rwa_id,
-            "payload": envelope(canonical, detail, _metadata(
+            "payload": envelope(canonical, item, _metadata(
                 f"/rwas/{quote(rwa_id, safe='')}?tokens=true", retrieved_at, rwa_id, raw_hash,
             )),
         })
@@ -364,8 +377,8 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         rows.append({
             "entity_type": "issuer", "source_namespace": "issuer_id", "external_id": issuer_id,
             "payload": envelope(canonical, raw_issuer, _metadata(
-                "/rwas/issuers/list", retrieved_at, issuer_id,
-                sha256_bytes(canonical_json(raw_issuer)),
+                f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true", retrieved_at, issuer_id,
+                sha256_bytes((output_dir / "details" / f"{safe_slug(source_rwa_id, 140)}.json").read_bytes()),
                 name_semantics="CoinGecko-reported issuer label; legal identity requires independent review.",
                 observed_underlying_rwa_id=source_rwa_id,
             )),
@@ -388,6 +401,17 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
                 slugs.update(str(k) for k, v in platforms.items() if isinstance(v, str) and v.strip())
     rows = []
     unknown = []
+    platform_evidence: dict[str, list[dict[str, Any]]] = {slug: [] for slug in slugs}
+    for rwa_id, detail in details.items():
+        for token in detail.get("tokens", []) if isinstance(detail.get("tokens"), list) else []:
+            platforms = token.get("platforms") if isinstance(token, dict) else None
+            if not isinstance(platforms, dict):
+                continue
+            for slug, address in platforms.items():
+                if isinstance(address, str) and address.strip():
+                    platform_evidence.setdefault(slug, []).append({
+                        "rwa_id": rwa_id, "token_id": token.get("id"), "address": address,
+                    })
     for slug in sorted(slugs):
         config = mapping.get(slug)
         if not config:
@@ -401,7 +425,7 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
             "entity_type": "network", "source_namespace": "platform_slug", "external_id": slug,
             "payload": envelope(canonical, {"platform_slug": slug, **config}, _metadata(
                 "/rwas/{id}?tokens=true", manifest["retrieved_at"], slug,
-                sha256_bytes(canonical_json(config)),
+                sha256_bytes(canonical_json(platform_evidence.get(slug, []))),
                 mapping_basis="explicit CoinGecko platform-to-CAIP-2 mapping",
             )),
         })
@@ -414,7 +438,13 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
     underlying_map = _active_alias_map(aliases, "rwa_id", "underlying")
     issuer_map = _active_alias_map(aliases, "issuer_id", "issuer")
     rows = []
+    token_id_counts: dict[str, int] = {}
+    for _, _, token in extract_tokens(details):
+        if isinstance(token.get("id"), str):
+            token_id_counts[token["id"]] = token_id_counts.get(token["id"], 0) + 1
+    duplicate_token_ids = {key for key, count in token_id_counts.items() if count > 1}
     counters = {"tokens_discovered": 0, "products_stageable": 0,
+                "duplicate_token_ids": len(duplicate_token_ids),
                 "unresolved_underlying_alias": 0, "unresolved_issuer_alias": 0,
                 "tokens_without_provider_id": 0, "tokens_without_issuer": 0}
     for rwa_id, detail, token in extract_tokens(details):
@@ -424,6 +454,8 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
         issuer_id = issuer.get("id")
         if not isinstance(token_id, str) or not token_id:
             counters["tokens_without_provider_id"] += 1
+            continue
+        if token_id in duplicate_token_ids:
             continue
         if not isinstance(issuer_id, str) or not issuer_id:
             counters["tokens_without_issuer"] += 1
@@ -470,12 +502,18 @@ def build_deployment_rows(manifest: dict[str, Any], details: dict[str, dict[str,
     product_map = _active_alias_map(aliases, "rwa_token_id", "issuer_product")
     network_alias_map = _active_alias_map(aliases, "platform_slug", "network")
     rows = []
+    token_id_counts: dict[str, int] = {}
+    for _, _, token in extract_tokens(details):
+        if isinstance(token.get("id"), str):
+            token_id_counts[token["id"]] = token_id_counts.get(token["id"], 0) + 1
+    duplicate_token_ids = {key for key, count in token_id_counts.items() if count > 1}
     counters = {"platform_entries": 0, "deployments_stageable": 0,
+                "duplicate_token_ids": len(duplicate_token_ids),
                 "unresolved_product_alias": 0, "unresolved_network_alias": 0,
                 "unsupported_platform_slugs": set(), "invalid_platform_addresses": 0}
     for rwa_id, detail, token in extract_tokens(details):
         token_id = token.get("id")
-        if not isinstance(token_id, str) or not token_id:
+        if not isinstance(token_id, str) or not token_id or token_id in duplicate_token_ids:
             continue
         product_id = product_map.get(token_id)
         platforms = token.get("platforms") if isinstance(token.get("platforms"), dict) else {}
@@ -643,8 +681,9 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     manifest, rwa_list, details = load_snapshot(output_dir)
     if phase not in {"foundations", "networks", "products", "deployments"}:
         raise RuntimeError(f"Unsupported import phase: {phase}")
-    if phase in manifest.get("staged_phases", {}):
-        raise RuntimeError(f"Phase {phase} has already been staged for this snapshot. Create a fresh snapshot for a new source version.")
+    existing_phase = manifest.get("staged_phases", {}).get(phase, {})
+    if existing_phase.get("status") == "complete":
+        raise RuntimeError(f"Phase {phase} is already complete for this snapshot.")
     run = _ensure_run(output_dir, manifest, api, submitted_by)
     aliases = api.get_aliases()
     counters: dict[str, Any] = {}
@@ -675,12 +714,39 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     else:
         rows, counters = build_deployment_rows(manifest, details, aliases, network_map)
 
+    phase_state = manifest.setdefault("staged_phases", {}).setdefault(phase, {
+        "attempts": 0, "staged_external_ids": [], "batch_ids": [],
+    })
+    staged_identities = set(phase_state["staged_external_ids"])
+    rows = [row for row in rows if f"{row['entity_type']}|{row['source_namespace']}|{row['external_id']}" not in staged_identities]
     batches = api.stage_rows(rows, submitted_by, manifest["retrieved_at"]) if rows else []
     batch_ids = [item["id"] for item in batches]
-    manifest.setdefault("staged_phases", {})[phase] = {
-        "staged_at": utc_now(), "eligible_rows": len(rows), "batch_ids": batch_ids,
-        "counters": counters,
-    }
+    phase_state["attempts"] += 1
+    phase_state["staged_at"] = utc_now()
+    phase_state["last_eligible_rows"] = len(rows)
+    phase_state["batch_ids"] = list(dict.fromkeys(phase_state["batch_ids"] + batch_ids))
+    phase_state["staged_external_ids"] = list(dict.fromkeys(
+        phase_state["staged_external_ids"] + [
+            f"{row['entity_type']}|{row['source_namespace']}|{row['external_id']}" for row in rows
+        ]
+    ))
+    phase_state["last_counters"] = counters
+    if phase == "networks":
+        phase_complete = not counters.get("unsupported_platform_slugs")
+    elif phase == "products":
+        phase_complete = not any(counters.get(k, 0) for k in (
+            "unresolved_underlying_alias", "unresolved_issuer_alias",
+            "tokens_without_provider_id", "tokens_without_issuer", "duplicate_token_ids"
+        ))
+    elif phase == "deployments":
+        phase_complete = not any(counters.get(k, 0) for k in (
+            "unresolved_product_alias", "unresolved_network_alias",
+            "invalid_platform_addresses", "unsupported_platform_slugs", "duplicate_token_ids"
+        ))
+    else:
+        phase_complete = counters.get("missing_underlying_name", 0) == 0
+    phase_state["status"] = "complete" if phase_complete else "in_progress"
+    phase_state["eligible_rows_total"] = len(phase_state["staged_external_ids"])
     manifest.setdefault("staged_batch_ids", []).extend(batch_ids)
     manifest["staged_batch_ids"] = list(dict.fromkeys(manifest["staged_batch_ids"]))
     coverage = build_coverage(output_dir, manifest, {
@@ -714,13 +780,32 @@ def reconcile_run(output_dir: Path, api: RegistryClient) -> dict[str, Any]:
             record_status[status] = record_status.get(status, 0) + 1
             typed = records_by_type.setdefault(entity_type, {})
             typed[status] = typed.get(status, 0) + 1
-    phases = set(manifest.get("staged_phases", {}))
-    all_phases_staged = phases == {"foundations", "networks", "products", "deployments"}
+    phase_states = manifest.get("staged_phases", {})
+    phases = set(phase_states)
+    all_phases_staged = phases == {"foundations", "networks", "products", "deployments"} and all(
+        phase_states.get(name, {}).get("status") == "complete"
+        for name in ("foundations", "networks", "products", "deployments")
+    )
+    phase_counters = {name: state.get("last_counters", {}) for name, state in phase_states.items()}
+    unsupported = sorted(set(
+        slug for counters in phase_counters.values()
+        for slug in counters.get("unsupported_platform_slugs", [])
+    ))
+    unresolved_dependencies = sum(
+        counters.get(key, 0)
+        for counters in phase_counters.values()
+        for key in ("unresolved_underlying_alias", "unresolved_issuer_alias",
+                    "unresolved_product_alias", "unresolved_network_alias")
+    )
     needs_review = record_status.get("needs_review", 0)
     base_coverage = build_coverage(output_dir, manifest)
     coverage = {
         **base_coverage,
         "staged_phases": sorted(phases),
+        "phase_status": {name: state.get("status", "in_progress") for name, state in phase_states.items()},
+        "phase_counters": phase_counters,
+        "unsupported_platform_slugs": unsupported,
+        "unresolved_parent_mappings": unresolved_dependencies,
         "all_pipeline_phases_staged": all_phases_staged,
         "batch_status_counts": batch_status,
         "record_status_counts": record_status,
@@ -732,7 +817,13 @@ def reconcile_run(output_dir: Path, api: RegistryClient) -> dict[str, Any]:
     }
     if needs_review:
         status = "awaiting_review"
-    elif all_phases_staged:
+    elif (
+        all_phases_staged
+        and manifest.get("is_full_provider_list")
+        and manifest.get("details_failed", 0) == 0
+        and not unsupported
+        and unresolved_dependencies == 0
+    ):
         status = "completed"
     else:
         status = "partial"

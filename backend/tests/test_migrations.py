@@ -121,3 +121,36 @@ def test_perpetual_contract_migration_table_upgrades_and_downgrades_cleanly(tmp_
         }
         assert "perpetual_contract_migrations" not in tables_after
     engine.dispose()
+
+
+
+def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monkeypatch):
+    database_path = tmp_path / "provider-ingestion.db"
+    database_url = f"sqlite:///{database_path}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    config = Config("alembic.ini")
+    command.upgrade(config, "0005_registry_import_reconciliation")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        before = {row[0] for row in connection.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table'")).all()}
+        assert "provider_ingestion_runs" not in before
+    engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        columns = {row[1] for row in connection.execute(
+            text("PRAGMA table_info(provider_ingestion_runs)")).all()}
+        assert {"id", "provider", "dataset", "source_version", "started_by", "status",
+                "manifest_sha256", "coverage_json", "staged_batch_ids_json",
+                "created_at", "updated_at", "completed_at"}.issubset(columns)
+    engine.dispose()
+
+    command.downgrade(config, "0005_registry_import_reconciliation")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        after = {row[0] for row in connection.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table'")).all()}
+        assert "provider_ingestion_runs" not in after
+    engine.dispose()
