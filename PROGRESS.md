@@ -235,4 +235,17 @@ Implemented in this increment:
 - Coverage report for CoinGecko-tracked RWA count, detail success/failure, issuer cross-check, tokens, platforms, staged batches, review queue, unresolved mappings and unsupported networks.
 - Human review remains mandatory. Issuer labels are explicitly not verified legal names; products have no inferred entitlement/conversion ratio; deployments remain unverified and representation type unknown.
 
-Validation status: automated adapter, phased dependency and migration tests are added. CI is pending. No live provider snapshot has been fetched in this environment because no CoinGecko API key or deployed registry admin endpoint was supplied. No production records have been staged.
+Validation status for application commit `175122bef842135e8b45b7cdecedd2f46a7bebc0`: pull-request workflow `41051380072` completed successfully. Ruff passed; 67 backend tests passed; Alembic upgrade/downgrade passed; frontend ESLint, TypeScript, Vitest and production build passed; Vercel Preview Comments passed. A duplicate push-triggered workflow was still running at the time of this update. No live provider snapshot has been fetched because no CoinGecko API key was configured in the execution environment. No production records have been staged.
+
+
+## 20. Sprint 5 validation evidence
+
+Application commit: \`175122bef842135e8b45b7cdecedd2f46a7bebc0\`.
+
+- PR quality workflow \`41051380072\`: passed.
+- Backend Ruff: passed.
+- Backend pytest: 67 passed (12 warnings).
+- Alembic migration upgrade and downgrade: passed.
+- Frontend ESLint, TypeScript, Vitest and Next.js production build: passed.
+- Vercel Preview Comments: passed.
+- PR #10 remains open and draft. No live CoinGecko snapshot or canonical records have been staged. Live pilot execution requires the operator's CoinGecko API key, a running registry API and its server-side \`REGISTRY_ADMIN_TOKEN\`.
