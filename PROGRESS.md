@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation merged and verified. Canonical identity registry is the active backend implementation increment; its CI checks are pending.
+**Status:** Frontend foundation merged and verified. Canonical identity registry PR #2 has passing frontend/backend CI and awaits merge.
 
 ## 1. Verified implementation evidence
 
@@ -9,13 +9,18 @@
 |---|---|---|
 | Frontend foundation | PR #1 merged to main; merge commit b23f2b9a54d5b8a470fbc122b34a249da8b31c12 | Merged |
 | Frontend quality | GitHub Actions run 40981455334 on merge commit | Passed: dependency install, ESLint, TypeScript and Next.js production build |
-| Canonical identity registry | Feature branch feat/canonical-identity-registry | In progress; do not treat code as accepted until backend lint/tests/migration and frontend gates pass |
+| Canonical identity registry | PR #2; head commit 2e3ddd8f2fb858f91adfdc5fbf3ac9e9c7152aff | Open draft; awaiting merge |
+| Registry PR quality | GitHub Actions PR run 40983315689 | Passed: frontend and backend jobs |
+| Backend lint/tests/migrations | Run 40983315689, Backend quality job | Ruff passed; 10 tests passed; Alembic upgrade and downgrade passed |
+| Frontend regression gates | Run 40983315689, Frontend quality job | Dependency install, ESLint, TypeScript and production build passed |
+
+The backend test run emitted one upstream deprecation warning from the Starlette/AnyIO test-client dependency chain. It did not fail the suite. The warning is recorded for dependency maintenance; no test failure remains on the current PR head.
 
 ## 2. Frontend baseline
 
 The merged application uses Next.js 15, React 19 and TypeScript. It contains the responsive shell, global overview, all 16 approved navigation destinations, shared readiness-gated page workspaces and explicit not-found behaviour. It deliberately contains no production market-data claims or mock market-data fallback.
 
-Frontend CI currently runs dependency installation, ESLint, TypeScript and production build.
+Frontend CI runs dependency installation, ESLint, TypeScript and production build.
 
 ## 3. Canonical identity registry — current implementation scope
 

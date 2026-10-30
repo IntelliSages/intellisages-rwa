@@ -27,9 +27,11 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [ ] Add versioned classification registry and provider-global inclusion evidence.
 - [x] Add exact builder/domain/market identity for perpetual contracts.
 - [ ] Add registry import/reconciliation and unresolved mapping workflow.
-- [~] Test NVIDIA/NVDAx/NVDAon, duplicate issuer-native IDs and EVM/non-EVM deployment identity.
+- [~] Test NVIDIA/NVDAx/NVDAon distinction, duplicate issuer-native IDs, EVM normalization, non-EVM case preservation and exact alias resolution.
 - [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
 - [x] Ensure unknown IDs return not found, never a default asset.
+
+**Current slice:** FastAPI + SQLAlchemy 2.x + Alembic, PostgreSQL target for shared environments, SQLite isolated to tests. PR #2 has passing frontend/backend CI but is not merged. Remaining EPIC 1 items are listed in docs/IDENTITY_REGISTRY.md.
 
 ## EPIC 2 — Provider adapters, rights and ingestion
 
