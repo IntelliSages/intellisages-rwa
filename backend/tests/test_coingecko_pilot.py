@@ -80,8 +80,14 @@ def test_foundations_create_underlyings_and_deduplicated_issuers_with_provenance
     underlying = next(r for r in rows if r["entity_type"] == "underlying")
     assert underlying["payload"]["canonical_payload"]["asset_type"] == "equity"
     assert underlying["payload"]["source_payload"]["id"] == "nvidia"
-    issuer = next(r for r in rows if r["entity_type"] == "issuer")
-    assert issuer["payload"]["canonical_payload"]["provider_name"] == "xStocks"
+    issuer_rows = [r for r in rows if r["entity_type"] == "issuer"]
+    assert {
+        r["payload"]["canonical_payload"]["provider_name"] for r in issuer_rows
+    } == {"xStocks", "Ondo Finance"}
+    issuer = next(
+        r for r in issuer_rows
+        if r["payload"]["canonical_payload"]["provider_name"] == "xStocks"
+    )
     assert "legal_name" not in issuer["payload"]["canonical_payload"]
     assert "legal identity requires independent review" in issuer["payload"]["source_metadata"]["name_semantics"]
 
@@ -318,7 +324,7 @@ def test_foundation_normalization_bounds_registry_fields_and_reports_invalid_ids
     underlying = next(row for row in rows if row["entity_type"] == "underlying")
     issuer = next(row for row in rows if row["entity_type"] == "issuer")
     assert len(underlying["payload"]["canonical_payload"]["display_name"]) == 240
-    assert len(issuer["payload"]["canonical_payload"]["legal_name"]) == 240
+    assert len(issuer["payload"]["canonical_payload"]["provider_name"]) == 240
     assert counters["underlying_id_out_of_range"] == 0
 
 
