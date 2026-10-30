@@ -60,7 +60,7 @@ def update_provider_run(run_id: str, payload: import_schemas.ProviderRunUpdate,
         phase_status = next_coverage.get("phase_status", {})
         if (
             next_coverage.get("all_pipeline_phases_staged") is not True
-            or set(phase_status) < required_phases
+            or not required_phases.issubset(set(phase_status))
             or any(phase_status.get(name) != "complete" for name in required_phases)
             or next_coverage.get("full_provider_list_requested") is not True
             or next_coverage.get("detail_failure_count", 0) != 0
