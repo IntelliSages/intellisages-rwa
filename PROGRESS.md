@@ -47,6 +47,8 @@
 | docs/VALIDATION_MATRIX.md | [x] Retained readiness and QA matrix |
 | docs/RESEARCH_AND_OPEN_DECISIONS.md | [x] External research and decisions |
 
+The supplied HTML embeds 20 page objects and 1,061 review records. Review recommendations are IMPROVE 781, KEEP 156, REMOVE 76, DEFER 44 and ADD 4. The page inventory includes sixteen intended product surfaces, two legacy pages (Cross-Token Arbitrage and standalone Pre-IPO Markets) and two detail templates. The HTML also contains Spot–Perp Carry and Paimon Deals/Events tabs that conflict with settled scope. The Home HTML's +0.61 24H correlation is illustrative; approved Home state is unavailable market-wide history with returns-based 30D methodology. See docs/BASELINE_AUDIT.md and docs/FRONTEND_SPEC.md.
+
 ## 4. Confirmed product decisions carried forward
 
 1. Count unique economic supply across networks (Option B).
