@@ -1,3 +1,4 @@
+import hmac
 import json
 import os
 from datetime import date, datetime, timezone
@@ -25,7 +26,7 @@ def require_import_admin(x_registry_admin_token: str | None = Header(default=Non
     expected = os.getenv("REGISTRY_ADMIN_TOKEN")
     if not expected:
         raise HTTPException(status_code=503, detail="Registry import administration is disabled: REGISTRY_ADMIN_TOKEN is not configured.")
-    if x_registry_admin_token is None or x_registry_admin_token != expected:
+    if x_registry_admin_token is None or not hmac.compare_digest(x_registry_admin_token, expected):
         raise HTTPException(status_code=401, detail="A valid registry administrator token is required.")
 
 
@@ -148,6 +149,7 @@ def stage_import(payload: import_schemas.ImportBatchCreate, db: Session = Depend
     db.add(batch)
     db.flush()
     seen: set[tuple[str, str, str]] = set()
+    total_payload_bytes = 0
     for index, item in enumerate(payload.records, start=1):
         identity = (item.entity_type, item.source_namespace, item.external_id)
         try:
@@ -155,6 +157,11 @@ def stage_import(payload: import_schemas.ImportBatchCreate, db: Session = Depend
         except (TypeError, ValueError) as exc:
             db.rollback()
             raise HTTPException(status_code=422, detail=f"Import row {index} payload must be JSON serializable.") from exc
+        payload_size = len(raw_payload.encode("utf-8"))
+        total_payload_bytes += payload_size
+        if payload_size > 50_000 or total_payload_bytes > 5_000_000:
+            db.rollback()
+            raise HTTPException(status_code=413, detail="Import payload exceeds the 50 KB per-row or 5 MB per-batch safety limit.")
         record = models.RegistryImportRecord(batch_id=batch.id, row_number=index, entity_type=item.entity_type,
             source_namespace=item.source_namespace, external_id=item.external_id, raw_payload_json=raw_payload)
         db.add(record)
