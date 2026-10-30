@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation and canonical identity registry PR #2 are merged. EPIC 1 extensions are in implementation on `feat/identity-supply-classification`; CI is pending.
+**Status:** Frontend foundation and canonical identity registry increments PR #2 and PR #3 are merged. Effective-dated provider alias history is implemented on a feature branch; its full CI suite passed on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`. PR creation is gated on the final documentation commit passing again.
 
 ## 1. Verified implementation evidence
 
@@ -45,7 +45,7 @@ Enforced behaviours:
 - Unknown canonical IDs return not found; no default asset fallback.
 - Unverified deployments remain explicitly unverified.
 
-The merged implementation does not yet include effective-dated alias history, economic-supply groups, evidence-backed bridge equivalence, classification history, provider-global inclusion evidence, spot/pool/loan-market entities, registry import/reconciliation, authentication or provider ingestion.
+The merged implementation includes economic-supply groups, evidence-bearing memberships, effective-dated classifications and provider-global inclusion evidence. It does not yet include effective-dated provider alias history, evidence-backed bridge equivalence, spot/pool/loan-market entities, registry import/reconciliation, authentication or provider ingestion.
 
 ## 4. Governing product decisions
 
@@ -77,7 +77,11 @@ No provider integration, production market observation, metric calculation or pr
 
 The MVP implementation blueprint remains the governing scope. See docs/IDENTITY_REGISTRY.md for the registry contract and omitted scope.
 
-## 7. Follow-on identity extension in progress
+## 7. Merged identity extension — PR #3
+
+PR #3 merged at `85558c8bf95c28f3b78dddcee00549e37c4b4160`. It adds economic-supply groups, evidence-bearing product memberships, effective-dated classifications and provider-global inclusion evidence. Its backend and frontend quality gates passed on commit `6005ea60ee620ab6cbe282834b3e356fa76dcaab` (push run `40985320170`, PR run `40985326916`).
+
+## 8. Merged identity extension — PR #3 details
 
 Branch `feat/identity-supply-classification` adds:
 - Economic-supply groups and product memberships with effective dates, evidence references and explicit verification status.
@@ -85,4 +89,10 @@ Branch `feat/identity-supply-classification` adds:
 - Versioned classification records for underlying assets and issuer products, including nullable provider-global inclusion evidence.
 - Date-range overlap validation and filtered classification reads.
 
-This work is not complete until frontend/backend CI and Alembic upgrade/downgrade pass. It does not establish that two products are economically equivalent: membership requires evidence and remains unverified by default. Provider-global inclusion is nullable, not inferred.
+The merged work does not establish that two products are economically equivalent: membership requires evidence and remains unverified by default. Provider-global inclusion is nullable, not inferred.
+
+## 9. Effective-dated provider aliases — in progress
+
+Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, a controlled close-period endpoint, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task.
+
+Validation on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`: GitHub Actions push run `40986320572` passed both quality jobs. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. This increment is not merged; PR creation follows a final CI pass after this evidence update.

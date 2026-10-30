@@ -1,4 +1,5 @@
 import re
+from datetime import date
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
@@ -115,22 +116,90 @@ def list_perpetuals(db: Session = Depends(get_db)):
 @router.post("/aliases", response_model=schemas.AliasRead, status_code=201)
 def create_alias(payload: schemas.AliasCreate, db: Session = Depends(get_db)):
     _require(db, ENTITY_MODELS[payload.entity_type], payload.entity_id, payload.entity_type)
+    conditions = [
+        models.ProviderAlias.provider == payload.provider,
+        models.ProviderAlias.namespace == payload.namespace,
+        models.ProviderAlias.external_id == payload.external_id,
+        or_(
+            models.ProviderAlias.effective_to.is_(None),
+            models.ProviderAlias.effective_to > payload.effective_from,
+        ),
+    ]
+    if payload.effective_to is not None:
+        conditions.append(
+            or_(
+                models.ProviderAlias.effective_from.is_(None),
+                models.ProviderAlias.effective_from < payload.effective_to,
+            )
+        )
+    overlap = db.scalar(select(models.ProviderAlias).where(*conditions))
+    if overlap:
+        raise HTTPException(status_code=409, detail="Provider alias has an overlapping effective period.")
     return _create(db, models.ProviderAlias, payload)
 @router.get("/aliases", response_model=list[schemas.AliasRead])
 def list_aliases(db: Session = Depends(get_db)):
     return _list(db, models.ProviderAlias)
+
+@router.patch("/aliases/{alias_id}/close", response_model=schemas.AliasRead)
+def close_alias(alias_id: str, payload: schemas.AliasClose, db: Session = Depends(get_db)):
+    alias = _require(db, models.ProviderAlias, alias_id, "Provider alias")
+    if alias.effective_to is not None:
+        raise HTTPException(status_code=409, detail="Provider alias is already closed.")
+    if alias.effective_from is not None and payload.effective_to <= alias.effective_from:
+        raise HTTPException(status_code=422, detail="effective_to must be later than effective_from.")
+
+    conditions = [
+        models.ProviderAlias.id != alias.id,
+        models.ProviderAlias.provider == alias.provider,
+        models.ProviderAlias.namespace == alias.namespace,
+        models.ProviderAlias.external_id == alias.external_id,
+        or_(
+            models.ProviderAlias.effective_from.is_(None),
+            models.ProviderAlias.effective_from < payload.effective_to,
+        ),
+    ]
+    if alias.effective_from is not None:
+        conditions.append(
+            or_(
+                models.ProviderAlias.effective_to.is_(None),
+                models.ProviderAlias.effective_to > alias.effective_from,
+            )
+        )
+    conflict = db.scalar(select(models.ProviderAlias).where(*conditions))
+    if conflict:
+        raise HTTPException(status_code=409, detail="Closing this alias would overlap another effective alias period.")
+
+    alias.effective_to = payload.effective_to
+    try:
+        db.commit()
+        db.refresh(alias)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Provider alias history conflicts with an existing record.") from exc
+    return alias
+
 
 @router.get("/aliases/resolve", response_model=schemas.AliasRead)
 def resolve_alias(
     provider: str = Query(min_length=1),
     namespace: str = Query(min_length=1),
     external_id: str = Query(min_length=1),
+    as_of: date | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
+    effective_date = as_of or date.today()
     alias = db.scalar(select(models.ProviderAlias).where(
         models.ProviderAlias.provider == provider,
         models.ProviderAlias.namespace == namespace,
         models.ProviderAlias.external_id == external_id,
+        or_(
+            models.ProviderAlias.effective_from.is_(None),
+            models.ProviderAlias.effective_from <= effective_date,
+        ),
+        or_(
+            models.ProviderAlias.effective_to.is_(None),
+            models.ProviderAlias.effective_to > effective_date,
+        ),
     ))
     if alias is None:
         raise HTTPException(status_code=404, detail="Provider alias not found.")
