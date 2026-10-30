@@ -302,3 +302,19 @@ def test_successful_batch_is_persisted_before_later_stage_failure(tmp_path):
     completed = stage_phase(tmp_path, "foundations", "operator", api)
     assert completed["eligible_rows"] == 0
     assert len(__import__("json").loads((tmp_path / "manifest.json").read_text())["staged_batch_ids"]) == 1
+
+
+
+def test_foundation_normalization_bounds_registry_fields_and_reports_invalid_ids(tmp_path):
+    client = FakeCoinGecko()
+    manifest = fetch_snapshot(tmp_path, client)
+    rwa_list = [{"id": "nvidia", "name": "NVIDIA", "asset_type": "stock"}]
+    details = {"nvidia": {
+        "id": "nvidia", "name": "N" * 300, "asset_type": "stock",
+        "tokens": [{"id": "token", "issuer_details": {"id": "issuer", "name": "I" * 300}}]}}
+    rows, counters = build_foundation_rows(tmp_path, manifest, rwa_list, details)
+    underlying = next(row for row in rows if row["entity_type"] == "underlying")
+    issuer = next(row for row in rows if row["entity_type"] == "issuer")
+    assert len(underlying["payload"]["canonical_payload"]["display_name"]) == 240
+    assert len(issuer["payload"]["canonical_payload"]["legal_name"]) == 240
+    assert counters["underlying_id_out_of_range"] == 0

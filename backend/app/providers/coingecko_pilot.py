@@ -362,10 +362,14 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
     rows: list[dict[str, Any]] = []
     issuer_sources: dict[str, tuple[str, dict[str, Any], str | None]] = {}
     counters = {"underlyings": 0, "issuers": 0, "missing_underlying_name": 0,
-                "tokens_without_issuer": 0}
+                "tokens_without_issuer": 0, "underlying_id_out_of_range": 0,
+                "issuer_id_out_of_range": 0, "issuer_without_name": 0}
     retrieved_at = manifest["retrieved_at"]
     for item in rwa_list[:manifest.get("requested_rwa_count", len(rwa_list))]:
         rwa_id = item.get("id")
+        if not isinstance(rwa_id, str) or not rwa_id or len(rwa_id) > 220:
+            counters["underlying_id_out_of_range"] += 1
+            continue
         detail = details.get(rwa_id)
         if not detail:
             continue
@@ -377,7 +381,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         raw_hash = sha256_bytes(source_path.read_bytes())
         canonical = {
             "canonical_key": source_key("rwa", rwa_id),
-            "display_name": name.strip(),
+            "display_name": name.strip()[:240],
             "asset_type": _asset_type(detail.get("asset_type") or item.get("asset_type")),
         }
         rows.append({
@@ -392,21 +396,28 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         counters["underlyings"] += 1
         for token in detail.get("tokens", []) if isinstance(detail.get("tokens"), list) else []:
             issuer = token.get("issuer_details") if isinstance(token, dict) else None
-            if not isinstance(issuer, dict) or not isinstance(issuer.get("id"), str) or not isinstance(issuer.get("name"), str):
+            if not isinstance(issuer, dict) or not isinstance(issuer.get("id"), str) or not issuer.get("id") or not isinstance(issuer.get("name"), str) or not issuer.get("name").strip():
                 counters["tokens_without_issuer"] += 1
                 continue
             issuer_id = issuer["id"]
-            issuer_sources.setdefault(issuer_id, (issuer["name"], issuer, rwa_id))
+            if len(issuer_id) > 220:
+                counters["issuer_id_out_of_range"] += 1
+                continue
+            issuer_sources.setdefault(issuer_id, (issuer["name"].strip()[:240], issuer, rwa_id))
     issuer_list_path = output_dir / "issuers-list.json"
     issuer_list_rows = _read_json(issuer_list_path) if issuer_list_path.exists() else []
     for issuer_row in issuer_list_rows if isinstance(issuer_list_rows, list) else []:
-        if isinstance(issuer_row, dict) and isinstance(issuer_row.get("id"), str) and isinstance(issuer_row.get("name"), str):
-            issuer_sources.setdefault(issuer_row["id"], (issuer_row["name"], issuer_row, None))
+        if isinstance(issuer_row, dict) and isinstance(issuer_row.get("id"), str) and issuer_row.get("id") and isinstance(issuer_row.get("name"), str) and issuer_row.get("name").strip():
+            issuer_id = issuer_row["id"]
+            if len(issuer_id) > 220:
+                counters["issuer_id_out_of_range"] += 1
+            else:
+                issuer_sources.setdefault(issuer_id, (issuer_row["name"].strip()[:240], issuer_row, None))
     for issuer_id, (issuer_name, raw_issuer, source_rwa_id) in sorted(issuer_sources.items()):
         canonical = {
             "canonical_key": source_key("issuer", issuer_id),
             # This is a provider-reported issuer label, not proof of the legal entity's registered name.
-            "legal_name": issuer_name.strip(),
+            "legal_name": issuer_name.strip()[:240],
         }
         rows.append({
             "entity_type": "issuer", "source_namespace": "issuer_id", "external_id": issuer_id,
@@ -497,7 +508,7 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
         token_id = token.get("id")
         issuer = token.get("issuer_details") if isinstance(token.get("issuer_details"), dict) else {}
         issuer_id = issuer.get("id")
-        if not isinstance(token_id, str) or not token_id:
+        if not isinstance(token_id, str) or not token_id or len(token_id) > 180:
             counters["tokens_without_provider_id"] += 1
             continue
         if token_id in duplicate_token_ids:
@@ -567,7 +578,7 @@ def build_deployment_rows(manifest: dict[str, Any], details: dict[str, dict[str,
         if not platforms:
             counters["tokens_without_platforms"] += 1
         for slug, address in platforms.items():
-            if not isinstance(address, str) or not address.strip():
+            if not isinstance(address, str) or not address.strip() or len(address) > 220:
                 counters["invalid_platform_addresses"] += 1
                 continue
             if mapping.get(slug, {}).get("family") == "evm" and not re.fullmatch(r"0x[a-fA-F0-9]{40}", address):
@@ -748,8 +759,12 @@ def _load_network_map(path: Path | None) -> dict[str, dict[str, str]]:
     for slug, item in data.items():
         if not isinstance(item, dict) or item.get("family") not in {"evm", "solana", "sui", "cosmos", "other"}:
             raise RuntimeError(f"Invalid network mapping for {slug}: expected namespace, display_name and valid family.")
+        if not isinstance(slug, str) or not slug or len(slug) > 220:
+            raise RuntimeError(f"Invalid network mapping key: {slug!r}")
         if not all(isinstance(item.get(k), str) and item[k].strip() for k in ("namespace", "display_name", "family")):
             raise RuntimeError(f"Invalid network mapping for {slug}: namespace, display_name and family are required.")
+        if len(item["namespace"]) > 120 or len(item["display_name"]) > 120:
+            raise RuntimeError(f"Network mapping for {slug} exceeds the registry field length limits.")
         cleaned[slug] = item
     return cleaned
 
@@ -856,7 +871,8 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     elif phase == "products":
         phase_complete = not any(counters.get(k, 0) for k in (
             "unresolved_underlying_alias", "unresolved_issuer_alias",
-            "tokens_without_provider_id", "tokens_without_issuer", "duplicate_token_ids"
+            "tokens_without_provider_id", "tokens_without_issuer", "duplicate_token_ids",
+            "issuer_id_out_of_range"
         )) and counters.get("tokens_discovered", 0) > 0
     elif phase == "deployments":
         phase_complete = not any(counters.get(k, 0) for k in (
@@ -865,7 +881,10 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
             "tokens_without_platforms"
         )) and counters.get("platform_entries", 0) > 0
     else:
-        phase_complete = counters.get("missing_underlying_name", 0) == 0
+        phase_complete = not any(counters.get(k, 0) for k in (
+            "missing_underlying_name", "underlying_id_out_of_range",
+            "issuer_id_out_of_range", "issuer_without_name"
+        ))
     phase_state["status"] = "complete" if phase_complete else "in_progress"
     phase_state["eligible_rows_total"] = len(phase_state["staged_external_ids"])
     manifest.setdefault("staged_batch_ids", []).extend(batch_ids)
