@@ -95,7 +95,7 @@ The initial provider adapter uses CoinGecko's dedicated RWA API as a **discovery
 Official provider guide: https://www.coingecko.com/learn/tokenized-rwa-data-api-guide  
 Relevant endpoints:
 - \`GET /api/v3/rwas/list\` — provider-tracked underlying list.
-- \`GET /api/v3/rwas/{id}?tokens=true\` — underlying detail, issuer tokens and platform-address mappings.
+- \`GET /api/v3/rwas/{id}?tokens=true&tokenized_market_data=true\` — underlying detail, issuer tokens and platform-address mappings.
 - \`GET /api/v3/rwas/issuers/list\` — optional issuer-list cross-check.
 
 ### Configure credentials

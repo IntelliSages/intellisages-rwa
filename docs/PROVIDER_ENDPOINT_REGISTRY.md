@@ -104,7 +104,7 @@ No secret may appear in docs, browser payloads or CSV. Do not bypass provider re
 
 The current pilot adapter uses:
 - \`GET https://api.coingecko.com/api/v3/rwas/list\` for the provider-tracked RWA underlying list.
-- \`GET /rwas/{id}?tokens=true\` for per-underlying token records, issuer details and platform contract/mint mappings.
+- \`GET /rwas/{id}?tokens=true&tokenized_market_data=true\` for per-underlying token records, issuer details and platform contract/mint mappings.
 - \`GET /rwas/issuers/list\` as an optional issuer-list cross-check.
 
 The official CoinGecko RWA API guide states that a Demo API key is required and that the free Demo plan supports the list/detail discovery workflow. Ticker liquidity and historical market-chart endpoints are not used by this registry importer; those require paid access according to the guide. See https://www.coingecko.com/learn/tokenized-rwa-data-api-guide (updated 26 Oct 2026).

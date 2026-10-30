@@ -56,6 +56,7 @@ def test_snapshot_fetches_real_endpoint_shapes_and_writes_resumable_raw_files(tm
     assert manifest["expected_rwa_count"] == 1
     assert manifest["details_succeeded"] == 1
     assert manifest["details_failed"] == 0
+    assert ("rwas/nvidia", {"tokens": "true", "tokenized_market_data": "true"}) in client.calls
     assert (tmp_path / "rwas-list.json").exists()
     assert (tmp_path / "details" / next((p.name for p in (tmp_path / "details").glob("*.json")))).exists()
     assert manifest["manifest_sha256"] and len(manifest["manifest_sha256"]) == 64

@@ -226,7 +226,7 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
         try:
             detail = client.get_json(
                 RWA_DETAIL_PATH.format(rwa_id=quote(rwa_id, safe="")),
-                {"tokens": "true"},
+                {"tokens": "true", "tokenized_market_data": "true"},
             )
             if not isinstance(detail, dict) or detail.get("id") != rwa_id:
                 raise RuntimeError("detail response ID did not match requested RWA ID")
@@ -371,7 +371,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         rows.append({
             "entity_type": "underlying", "source_namespace": "rwa_id", "external_id": rwa_id,
             "payload": envelope(canonical, item, _metadata(
-                f"/rwas/{quote(rwa_id, safe='')}?tokens=true", retrieved_at, rwa_id, raw_hash,
+                f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true", retrieved_at, rwa_id, raw_hash,
             )),
         })
         counters["underlyings"] += 1
@@ -396,7 +396,7 @@ def build_foundation_rows(output_dir: Path, manifest: dict[str, Any],
         rows.append({
             "entity_type": "issuer", "source_namespace": "issuer_id", "external_id": issuer_id,
             "payload": envelope(canonical, raw_issuer, _metadata(
-                "/rwas/issuers/list" if source_rwa_id is None else f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true",
+                "/rwas/issuers/list" if source_rwa_id is None else f"/rwas/{quote(source_rwa_id, safe='')}?tokens=true&tokenized_market_data=true",
                 retrieved_at, issuer_id,
                 sha256_bytes(canonical_json(raw_issuer)) if source_rwa_id is None else
                 sha256_bytes((output_dir / "details" / _detail_file_name(source_rwa_id)).read_bytes()),
@@ -448,7 +448,7 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
         rows.append({
             "entity_type": "network", "source_namespace": "platform_slug", "external_id": slug,
             "payload": envelope(canonical, {"platform_slug": slug, **config}, _metadata(
-                "/rwas/{id}?tokens=true", manifest["retrieved_at"], slug,
+                "/rwas/{id}?tokens=true&tokenized_market_data=true&tokenized_market_data=true", manifest["retrieved_at"], slug,
                 sha256_bytes(canonical_json(platform_evidence.get(slug, []))),
                 mapping_basis="explicit CoinGecko platform-to-CAIP-2 mapping",
             )),
@@ -508,7 +508,7 @@ def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, An
             "entity_type": "issuer_product", "source_namespace": "rwa_token_id",
             "external_id": token_id,
             "payload": envelope(canonical, token, _metadata(
-                f"/rwas/{quote(rwa_id, safe='')}?tokens=true", manifest["retrieved_at"],
+                f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true", manifest["retrieved_at"],
                 token_id, source_hash, underlying_rwa_id=rwa_id,
                 issuer_id=issuer_id, issuer_name=issuer.get("name"),
             )),
@@ -574,7 +574,7 @@ def build_deployment_rows(manifest: dict[str, Any], details: dict[str, dict[str,
                 "external_id": external_id,
                 "payload": envelope(canonical, {"token_id": token_id, "platform_slug": slug,
                     "native_identifier": address}, _metadata(
-                    f"/rwas/{quote(rwa_id, safe='')}?tokens=true", manifest["retrieved_at"],
+                    f"/rwas/{quote(rwa_id, safe='')}?tokens=true&tokenized_market_data=true", manifest["retrieved_at"],
                     external_id, sha256_bytes(canonical_json({"token_id": token_id, "platform": slug, "address": address})),
                     underlying_rwa_id=rwa_id,
                 )),
