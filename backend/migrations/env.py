@@ -9,6 +9,7 @@ from sqlalchemy import engine_from_config, pool
 # dialect implementation registry before MigrationContext is configured.
 from app.alembic_impl import ExtendedPostgresqlImpl  # noqa: F401
 from app.database import (
+    commit_pre_migration_transaction,
     ensure_alembic_version_column_length,
     normalise_database_url,
 )
@@ -135,8 +136,7 @@ def run_migrations_online():
         # Explicitly end any preflight transaction so Alembic owns the
         # migration transaction and commits it when the context exits.
         ensure_alembic_version_column_length(connection)
-        if connection.in_transaction():
-            connection.commit()
+        commit_pre_migration_transaction(connection)
 
         context.configure(
             connection=connection,
