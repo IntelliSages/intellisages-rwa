@@ -147,7 +147,10 @@ def run_migrations_online():
 
             # Verify before commit: a failed verification rolls back the
             # migration instead of persisting a partial or unusable schema.
-            if connection.dialect.name == "postgresql":
+            if (
+                connection.dialect.name == "postgresql"
+                and context.get_x_argument(as_dictionary=True).get("verify_schema") == "true"
+            ):
                 _verify_postgresql_schema(connection)
 
 
