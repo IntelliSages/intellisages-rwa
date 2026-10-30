@@ -145,12 +145,19 @@ def run_migrations_online():
         with context.begin_transaction():
             context.run_migrations()
 
-            # Verify before commit: a failed verification rolls back the
-            # migration instead of persisting a partial or unusable schema.
-            if (
+            # A schema check is meaningful after upgrades, but not after a
+            # deliberate downgrade to base (where alembic_version has no row).
+            # Keep this opt-in so production startup and CI upgrades can enforce
+            # the required schema without rejecting valid downgrade operations.
+            x_args = context.get_x_argument(as_dictionary=True)
+            should_verify_schema = (
                 connection.dialect.name == "postgresql"
-                and context.get_x_argument(as_dictionary=True).get("verify_schema") == "true"
-            ):
+                and x_args.get("verify_schema") == "true"
+                and context.config.cmd_opts is not None
+                and getattr(context.config.cmd_opts, "cmd", None) is not None
+            )
+            command_name = getattr(context.config.cmd_opts, "cmd", None) if context.config.cmd_opts else None
+            if should_verify_schema and getattr(command_name, "__name__", "") == "upgrade":
                 _verify_postgresql_schema(connection)
 
 
