@@ -34,11 +34,10 @@ def test_alembic_version_column_widening_is_postgres_only():
     engine.dispose()
 
 
-
-def test_alembic_version_column_widening_alters_and_verifies_postgres():
+def test_alembic_version_column_widening_updates_all_schemas_and_verifies():
     class Result:
-        def scalar_one_or_none(self):
-            return 128
+        def all(self):
+            return []
 
     class PostgreSQLConnection:
         class Dialect:
@@ -50,7 +49,7 @@ def test_alembic_version_column_widening_alters_and_verifies_postgres():
             self.statements = []
             self.committed = False
 
-        def exec_driver_sql(self, statement):
+        def exec_driver_sql(self, statement, parameters=None):
             self.statements.append(statement)
             return Result()
 
@@ -59,15 +58,17 @@ def test_alembic_version_column_widening_alters_and_verifies_postgres():
 
     connection = PostgreSQLConnection()
     assert ensure_alembic_version_column_length(connection) is True
-    assert "ALTER TABLE IF EXISTS alembic_version" in connection.statements[0]
-    assert "VARCHAR(128)" in connection.statements[0]
+    assert "information_schema.columns" in connection.statements[0]
+    assert "EXECUTE format" in connection.statements[0]
+    assert "VARCHAR(%s)" in connection.statements[0]
+    assert "information_schema.columns" in connection.statements[1]
     assert connection.committed is True
 
 
-def test_alembic_version_column_widening_fails_if_postgres_width_is_still_short():
+def test_alembic_version_column_widening_fails_if_any_schema_remains_short():
     class Result:
-        def scalar_one_or_none(self):
-            return 32
+        def all(self):
+            return [("public", 32)]
 
     class PostgreSQLConnection:
         class Dialect:
@@ -75,7 +76,7 @@ def test_alembic_version_column_widening_fails_if_postgres_width_is_still_short(
 
         dialect = Dialect()
 
-        def exec_driver_sql(self, statement):
+        def exec_driver_sql(self, statement, parameters=None):
             return Result()
 
         def commit(self):
@@ -83,7 +84,7 @@ def test_alembic_version_column_widening_fails_if_postgres_width_is_still_short(
 
     import pytest
 
-    with pytest.raises(RuntimeError, match="expected VARCHAR\\(128\\)"):
+    with pytest.raises(RuntimeError, match="public.alembic_version.version_num"):
         ensure_alembic_version_column_length(PostgreSQLConnection())
 
 
