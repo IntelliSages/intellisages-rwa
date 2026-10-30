@@ -160,13 +160,16 @@ def list_supply_groups(db: Session = Depends(get_db)):
 def create_supply_membership(payload: schemas.SupplyMembershipCreate, db: Session = Depends(get_db)):
     _require(db, models.EconomicSupplyGroup, payload.group_id, "Economic supply group")
     _require(db, models.IssuerProduct, payload.issuer_product_id, "Issuer product")
-    overlap = db.scalar(select(models.EconomicSupplyMembership).where(
+    conditions = [
         models.EconomicSupplyMembership.issuer_product_id == payload.issuer_product_id,
-        or_(models.EconomicSupplyMembership.effective_to.is_(None),
-            models.EconomicSupplyMembership.effective_to > payload.effective_from),
-        or_(payload.effective_to is None,
-            models.EconomicSupplyMembership.effective_from < payload.effective_to),
-    ))
+        or_(
+            models.EconomicSupplyMembership.effective_to.is_(None),
+            models.EconomicSupplyMembership.effective_to > payload.effective_from,
+        ),
+    ]
+    if payload.effective_to is not None:
+        conditions.append(models.EconomicSupplyMembership.effective_from < payload.effective_to)
+    overlap = db.scalar(select(models.EconomicSupplyMembership).where(*conditions))
     if overlap:
         raise HTTPException(status_code=409, detail="Product already has an overlapping economic-supply membership.")
     return _create(db, models.EconomicSupplyMembership, payload)
@@ -179,14 +182,17 @@ def list_supply_memberships(db: Session = Depends(get_db)):
 def create_classification(payload: schemas.ClassificationCreate, db: Session = Depends(get_db)):
     target_model = {"underlying": models.UnderlyingAsset, "issuer_product": models.IssuerProduct}[payload.entity_type]
     _require(db, target_model, payload.entity_id, payload.entity_type)
-    overlap = db.scalar(select(models.ProductClassification).where(
+    conditions = [
         models.ProductClassification.entity_type == payload.entity_type,
         models.ProductClassification.entity_id == payload.entity_id,
-        or_(models.ProductClassification.effective_to.is_(None),
-            models.ProductClassification.effective_to > payload.effective_from),
-        or_(payload.effective_to is None,
-            models.ProductClassification.effective_from < payload.effective_to),
-    ))
+        or_(
+            models.ProductClassification.effective_to.is_(None),
+            models.ProductClassification.effective_to > payload.effective_from,
+        ),
+    ]
+    if payload.effective_to is not None:
+        conditions.append(models.ProductClassification.effective_from < payload.effective_to)
+    overlap = db.scalar(select(models.ProductClassification).where(*conditions))
     if overlap:
         raise HTTPException(status_code=409, detail="Classification periods for an entity cannot overlap.")
     return _create(db, models.ProductClassification, payload)
