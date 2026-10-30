@@ -18,7 +18,7 @@ services:
     buildCommand: pip install -r backend/requirements.txt
     # Free web services do not support pre-deploy commands. Run migrations
     # against the service DATABASE_URL before starting the API process.
-    startCommand: cd backend && python -m alembic -c alembic.ini upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && python -m alembic -c alembic.ini -x verify_schema=true upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     autoDeployTrigger: commit
     envVars:
