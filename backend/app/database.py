@@ -18,42 +18,70 @@ def normalise_database_url(value: str) -> str:
 
 
 def ensure_alembic_version_column_length(connection) -> bool:
-    """Widen Alembic's existing revision column before migrations run.
+    """Widen every existing Alembic revision column before migrations run.
 
-    Use PostgreSQL's own search_path resolution, matching Alembic's unqualified
-    UPDATE of alembic_version. Do not rely on SQLAlchemy reflection to decide
-    whether the table exists: reflection can inspect a different visible
-    schema when a database has a non-default search_path.
+    PostgreSQL permits multiple schemas to contain an alembic_version table.
+    Alembic's unqualified version-table UPDATE resolves through search_path,
+    while an ALTER against only one visible table can leave a shadowed table
+    at VARCHAR(32). Widen all matching application-schema tables so the
+    column Alembic resolves cannot remain undersized.
     """
     if connection.dialect.name != "postgresql":
         return False
 
     connection.exec_driver_sql(
-        "ALTER TABLE IF EXISTS alembic_version "
-        f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
+        """
+        DO $alembic_version_width$
+        DECLARE
+            version_table RECORD;
+        BEGIN
+            FOR version_table IN
+                SELECT table_schema
+                FROM information_schema.columns
+                WHERE table_name = 'alembic_version'
+                  AND column_name = 'version_num'
+                  AND table_schema NOT IN ('pg_catalog', 'information_schema')
+            LOOP
+                EXECUTE format(
+                    'ALTER TABLE %I.%I ALTER COLUMN %I TYPE VARCHAR(%s)',
+                    version_table.table_schema,
+                    'alembic_version',
+                    'version_num',
+                    128
+                );
+            END LOOP;
+        END
+        $alembic_version_width$;
+        """
     )
     connection.commit()
 
-    result = connection.exec_driver_sql(
+    remaining_short_columns = connection.exec_driver_sql(
         """
-        SELECT character_maximum_length
+        SELECT table_schema, character_maximum_length
         FROM information_schema.columns
         WHERE table_name = 'alembic_version'
           AND column_name = 'version_num'
-          AND table_schema = ANY(current_schemas(false))
-        ORDER BY array_position(current_schemas(false), table_schema)
-        LIMIT 1
-        """
-    ).scalar_one_or_none()
+          AND table_schema NOT IN ('pg_catalog', 'information_schema')
+          AND (
+              character_maximum_length IS NULL
+              OR character_maximum_length < %s
+          )
+        """,
+        (ALEMBIC_VERSION_NUM_LENGTH,),
+    ).all()
 
-    # No row means this is a fresh database; Alembic will create the table
-    # using version_num_length=ALEMBIC_VERSION_NUM_LENGTH.
-    if result is not None and result < ALEMBIC_VERSION_NUM_LENGTH:
-        raise RuntimeError(
-            "Could not widen alembic_version.version_num: "
-            f"expected VARCHAR({ALEMBIC_VERSION_NUM_LENGTH}), found VARCHAR({result})."
+    if remaining_short_columns:
+        details = ", ".join(
+            f"{schema}.alembic_version.version_num VARCHAR({length})"
+            for schema, length in remaining_short_columns
         )
-    return result is not None
+        raise RuntimeError(
+            "Could not widen all Alembic version columns to "
+            f"VARCHAR({ALEMBIC_VERSION_NUM_LENGTH}): {details}."
+        )
+
+    return True
 
 
 RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./rwa-intelligence.db")
