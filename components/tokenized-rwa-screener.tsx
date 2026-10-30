@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Database,
+  ArrowDown, ArrowUp, ChevronDown, ChevronRight, Database,
   Filter, RefreshCw, Search, ShieldCheck, SlidersHorizontal,
 } from "lucide-react";
 import { AvailabilityPill, DataProvenance, MetricUnavailable } from "@/components/data-components";

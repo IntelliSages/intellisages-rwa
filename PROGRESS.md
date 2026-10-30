@@ -131,3 +131,13 @@ Implementation branch: `feat/tokenized-rwa-screener`.
 This increment adds a dedicated Tokenized RWA Screener page, shared availability/provenance components, a same-origin Next.js API proxy, and a read-only FastAPI catalogue endpoint. The endpoint returns effective RWA-classified registry products once each, joins underlying and issuer identity, exposes classification evidence, lists product-level deployment records and applies network filters only to verified deployments. Registry counts are explicitly not represented as provider-complete universe coverage. Market metrics remain unavailable because no validated observations are connected.
 
 Frontend automated tests cover shared status/provenance disclosures, product identity display, deployment expansion, verified-network filter requests and API-not-configured state. Backend tests cover product distinctness, effective classification, verified-network filtering, search, facets, pagination and input validation. Implementation commit `00cf89fb6ca9e3e330eeb2bd74efad09a25f4691` passed push workflow `40991605769`: backend Ruff, 33 pytest tests and Alembic upgrade/downgrade passed; frontend dependency install, ESLint, TypeScript, 7 Vitest tests and Next.js production build passed. The final documentation commit and PR-triggered workflow remain required before review.
+
+
+## 8. Vercel preview deployment and security remediation — 2026-10-30
+
+- Created the dedicated Vercel project `intellisages-rwa` in the `apostleoffinance's projects` workspace and targeted the `IntelliSages/intellisages-rwa` repository.
+- First preview build was blocked by Vercel because Next.js `15.5.6` was flagged as vulnerable (CVE-2025-66478). The deployment was not exposed as a successful preview.
+- Updated the frontend runtime to Next.js `15.5.28`, React/React DOM `19.1.10`, and Sharp `0.35.5`; aligned `eslint-config-next` to `15.5.28`. Added a PostCSS override to `8.5.32` and updated Vitest to `4.1.12` to clear dependency audit findings.
+- Updated Vitest JSX transformation to the current Oxc configuration and removed existing unused-import / anonymous-export lint warnings.
+- Local sandbox validation after remediation: 7 frontend tests passed; ESLint passed; TypeScript passed; Next.js production build passed; `npm audit --audit-level=low` reported 0 vulnerabilities.
+- The remediation is committed to the Tokenized RWA Screener PR branch. A fresh Vercel preview must still complete successfully before a preview URL is treated as ready. Production deployment remains out of scope.
