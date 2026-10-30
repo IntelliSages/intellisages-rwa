@@ -185,7 +185,9 @@ def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
         schema_url = url.update_query_dict({"options": f"-csearch_path={schema_name},public"})
         schema_engine = create_engine(schema_url)
         config = Config("alembic.ini")
-        monkeypatch.setenv("DATABASE_URL", str(schema_url))
+        # Alembic Config uses ConfigParser interpolation; URL query parameters
+        # contain percent-escapes. Escape percent signs before setting the URL.
+        monkeypatch.setenv("DATABASE_URL", str(schema_url).replace("%", "%%"))
 
         command.upgrade(config, "head")
 
