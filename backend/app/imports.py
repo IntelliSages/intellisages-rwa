@@ -223,7 +223,9 @@ def get_import_audit(batch_id: str, db: Session = Depends(get_db)):
              dependencies=[Depends(require_import_admin)])
 def decide_import_record(record_id: str, decision: import_schemas.ImportDecision,
                          db: Session = Depends(get_db)):
-    record = db.get(models.RegistryImportRecord, record_id)
+    record = db.scalar(select(models.RegistryImportRecord).where(
+        models.RegistryImportRecord.id == record_id
+    ).with_for_update())
     if record is None:
         raise HTTPException(status_code=404, detail="Import record not found.")
     if record.status != "needs_review":
