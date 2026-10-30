@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** PRs #2–#6 are merged. The Home dashboard, Crypto Screener and page-specific workspace layouts are in `main`. Tokenized RWA Screener and the first read-only catalogue API are under implementation on `feat/tokenized-rwa-screener`; final documentation-commit and PR-triggered CI remain mandatory before review.
+**Status:** PR #7 is merged. The Home dashboard, Crypto Screener, page-specific workspaces and Tokenized RWA Screener/catalogue API are in `main`. Sprint 3 product-detail navigation and exact product lookup are in progress on `feat/rwa-product-detail-navigation`; validation and PR review remain pending.
 
 ## 1. Verified implementation evidence
 
@@ -141,3 +141,17 @@ Frontend automated tests cover shared status/provenance disclosures, product ide
 - Updated Vitest JSX transformation to the current Oxc configuration and removed existing unused-import / anonymous-export lint warnings.
 - Local sandbox validation after remediation: 7 frontend tests passed; ESLint passed; TypeScript passed; Next.js production build passed; `npm audit --audit-level=low` reported 0 vulnerabilities.
 - Vercel and GitHub Actions are configured to use Node.js 24.x because npm 10 on Node 22 failed dependency-tree construction (`Cannot read properties of null (reading 'edgesOut')`); npm 11 on Node 24 generated the lockfile and completed dependency audit successfully.\n- The remediation is committed to the Tokenized RWA Screener PR branch. A fresh Vercel preview must still complete successfully before a preview URL is treated as ready. Production deployment remains out of scope.
+
+
+## 13. Sprint 3 — canonical tokenized product detail (in progress)
+
+Branch: `feat/rwa-product-detail-navigation`.
+
+PR #7 is merged. This increment adds:
+- Exact `GET /api/v1/catalogue/tokenized-products/{product_id}` lookup for one currently RWA-classified issuer product.
+- Effective-date filtering and a strict 404 for unknown IDs, symbol-only lookups and products without an effective RWA classification.
+- Product detail payload containing issuer and underlying identity, classification source/evidence, provider-global inclusion state, and product-level deployment records.
+- A same-origin Next.js proxy route and a canonical product detail page linked from each screener result.
+- Explicitly unavailable market metrics; registry identity and classification do not imply live market coverage, legal verification or asset backing.
+
+**Validation status:** implementation has been committed to the feature branch. Backend Ruff/pytest/Alembic, frontend ESLint/TypeScript/Vitest/production build and both GitHub Actions workflows are not yet verified for this increment. Do not mark the work complete until those checks pass on the final commit.
