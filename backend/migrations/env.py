@@ -62,6 +62,13 @@ def _log_postgresql_target(connection):
 
 
 def _verify_postgresql_schema(connection):
+    version_table = connection.exec_driver_sql(
+        "SELECT pg_catalog.to_regclass('alembic_version')"
+    ).scalar_one_or_none()
+    if version_table is None:
+        logger.info("Alembic version table is absent; no application tables expected.")
+        return
+
     revision = connection.exec_driver_sql(
         "SELECT version_num FROM alembic_version"
     ).scalar_one_or_none()
