@@ -20,7 +20,8 @@ def test_postgresql_alembic_version_table_uses_extended_column():
     registered_impl = DefaultImpl.get_by_dialect(postgresql_dialect())
     assert registered_impl is ExtendedPostgresqlImpl
 
-    table = registered_impl.version_table_impl(
+    implementation = object.__new__(registered_impl)
+    table = implementation.version_table_impl(
         version_table="alembic_version",
         version_table_schema=None,
         version_table_pk=True,
