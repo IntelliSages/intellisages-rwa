@@ -45,7 +45,14 @@ def _candidate(db: Session, record: models.RegistryImportRecord, entity_type: st
         models.RegistryImportCandidate.import_record_id == record.id,
         models.RegistryImportCandidate.candidate_entity_type == entity_type,
         models.RegistryImportCandidate.candidate_entity_id == entity_id))
-    if exists is None:
+    pending = any(
+        isinstance(item, models.RegistryImportCandidate)
+        and item.import_record_id == record.id
+        and item.candidate_entity_type == entity_type
+        and item.candidate_entity_id == entity_id
+        for item in db.new
+    )
+    if exists is None and not pending:
         db.add(models.RegistryImportCandidate(import_record_id=record.id, candidate_entity_type=entity_type,
             candidate_entity_id=entity_id, match_basis=basis, confidence=confidence, evidence_ref=evidence_ref))
 
@@ -131,6 +138,7 @@ def _batch_read(batch: models.RegistryImportBatch):
 
 
 def _refresh_batch_status(db: Session, batch: models.RegistryImportBatch):
+    db.flush()
     counts = dict(db.execute(select(models.RegistryImportRecord.status, func.count(models.RegistryImportRecord.id))
         .where(models.RegistryImportRecord.batch_id == batch.id).group_by(models.RegistryImportRecord.status)).all())
     if counts.get("needs_review", 0):
@@ -174,6 +182,7 @@ def stage_import(payload: import_schemas.ImportBatchCreate, db: Session = Depend
         else:
             seen.add(identity)
             _discover_candidates(db, batch, record, item.payload)
+            db.flush()
             count = db.scalar(select(func.count(models.RegistryImportCandidate.id)).where(
                 models.RegistryImportCandidate.import_record_id == record.id))
             _audit(db, batch.id, payload.submitted_by, "record_staged", {
