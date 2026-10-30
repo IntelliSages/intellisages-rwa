@@ -287,7 +287,7 @@ def test_successful_batch_is_persisted_before_later_stage_failure(tmp_path):
 
     class FailsAfterOneBatch(FakeRegistry):
         def stage_rows(self, rows, submitted_by, source_version, on_batch=None):
-            first = super().stage_rows(rows, submitted_by, source_version, on_batch)
+            super().stage_rows(rows, submitted_by, source_version, on_batch)
             raise RuntimeError("simulated later chunk failure")
 
     fetch_snapshot(tmp_path, FakeCoinGecko())
