@@ -1,20 +1,26 @@
 # RWAs Intelligence — Engineering Task Register
 
+**Governing baseline:** [MVP_IMPLEMENTATION_BLUEPRINT.md](MVP_IMPLEMENTATION_BLUEPRINT.md).  
 **Status:** initial work breakdown. Tasks are not complete until evidence is linked in PROGRESS.md.
 
 Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!] blocked.
 
-## EPIC 0 — Repository and prototype audit
+## EPIC 0 — MVP freeze, repository and prototype baseline
+
+- [ ] Freeze the 16 approved pages and page-level launch qualifications from the MVP blueprint.
 - [ ] Record repository tree, default branch, commit, framework, dependencies and scripts.
-- [ ] Inspect existing frontend routes, components, state, API calls and mock fixtures.
+- [ ] Inspect frontend routes/components/state/API calls/mock fixtures.
 - [ ] Inspect backend services, migrations, jobs, secrets and deployment configuration.
 - [ ] Inspect CI, lint, typecheck, unit/integration/e2e tests and coverage.
 - [ ] Inventory every mock page, tab, control, metric, navigation target and modal.
-- [ ] Separate current baseline, proposed MVP changes, removed features and deferred scope.
+- [ ] Separate approved MVP, current baseline, removed features and deferred scope.
+- [ ] Convert inherited QA-01–QA-10 into tracked acceptance tests.
+- [ ] Establish per-page/per-metric readiness register and provider evidence inventory.
 - [ ] Record security, licensing, accessibility and operational risks.
 
-## EPIC 1 — Domain model and registry
-- [ ] Define canonical IDs and relational schema for underlying, issuer, issuer product, network, deployment, venue, market, pool and provider alias.
+## EPIC 1 — Canonical identity and classification registry
+
+- [ ] Define canonical entities/IDs for underlying, issuer, issuer product, network, deployment, venue, spot market, perp contract, pool, loan market and provider alias.
 - [ ] Add effective-dated provider aliases, symbol/name aliases and contract migrations.
 - [ ] Add representation type: independent issuance, bridge/wrapper or unknown.
 - [ ] Add economic-supply groups and evidence references.
@@ -22,72 +28,91 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [ ] Add exact builder/domain/market identity for perpetual contracts.
 - [ ] Add registry import/reconciliation and unresolved mapping workflow.
 - [ ] Test NVIDIA/NVDAx/NVDAon, duplicate tickers, bridge and multi-network cases.
+- [ ] Verify deployment per product; never infer all issuer products exist on all issuer-supported networks.
+- [ ] Ensure unknown IDs return not found, never a default asset.
 
-## EPIC 2 — Data platform foundation
-- [ ] Select database, migration and job orchestration technologies after audit.
+## EPIC 2 — Provider adapters, rights and ingestion
+
+- [ ] Prioritize source tiers and validated subsets in MVP_IMPLEMENTATION_BLUEPRINT.md.
+- [ ] Confirm exact provider route, method, parameters, auth, native identifiers and entitlement.
+- [ ] Confirm commercial use, caching, retention, redistribution, attribution and CSV/export rights.
+- [ ] Save sanitized request/response fixtures and retrieval metadata.
 - [ ] Define provider adapter interface and secret configuration.
-- [ ] Implement raw response/fixture persistence with secret redaction.
-- [ ] Implement normalized observation schema and decimal/unit handling.
+- [ ] Implement raw response persistence with secret redaction.
 - [ ] Implement pagination checkpoints and terminal-page validation.
 - [ ] Implement bounded retries, rate budgets and idempotency.
 - [ ] Implement quarantine for invalid/unmapped records.
-- [ ] Implement coverage snapshots and job-state telemetry.
-- [ ] Implement metric availability/status response contract.
+- [ ] Implement coverage snapshots, partial/blocked states and job telemetry.
+- [ ] Separate source-native records from normalized observations.
+- [ ] Validate the proposed refresh cadence against actual quotas and reliability.
 
-## EPIC 3 — Home and broad screeners
-- [ ] Implement complete eligible Crypto universe crawl or explicitly covered universe.
-- [ ] Implement tokenized RWA underlying discovery and canonical catalogue.
-- [ ] Implement Crypto/RWA classification and provider-global inclusion checks.
-- [ ] Implement Home headline read model with honest unavailable/partial states.
-- [ ] Implement volume ranking after full eligible ingestion, then top-ten selection.
-- [ ] Implement numeric sorting, stable tie-break and null-last behaviour.
-- [ ] Implement CSV schema with raw values, canonical IDs and coverage.
-- [ ] Implement broad underlying detail and issuer-product expansion.
-- [ ] Implement selected-network and All Networks semantics.
-- [ ] Implement context-preserving navigation/back/reopen.
+## EPIC 3 — Normalization, history and metric readiness
 
-## EPIC 4 — Issuer integrations
-- [ ] CoinGecko RWA catalogue/underlying/product adapter and entitlement test.
-- [ ] xStocks catalogue pagination, contract mapping and supply history.
-- [ ] Robinhood issuer catalogue and contract reconciliation.
-- [ ] Backpack securities catalogue; separate RFQ and listed orderbooks.
-- [ ] Ondo authenticated catalogue and market adapter.
-- [ ] Binance/bStocks authorized catalogue and exact instrument mapping.
-- [ ] PreStocks product/mint and Solana supply/decimals adapter.
-- [ ] Paimon catalogue adapter and legal/terms review.
-- [ ] Product-specific network and venue coverage reconciliation.
-- [ ] Per-issuer data-quality and readiness report.
-
-## EPIC 5 — Market and derivatives
-- [ ] GeckoTerminal exact pool/token and pagination adapter.
-- [ ] Execution-level deduplication fixtures across providers/router/pools.
-- [ ] Hyperliquid first-DEX and HIP-3 builder-scoped adapter.
-- [ ] Lighter RH and Core domain-specific adapter.
-- [ ] Kraken futures instrument/funding/orderbook adapter.
-- [ ] Backpack listed perp/RFQ distinctions and funding adapter.
-- [ ] Normalize mark, index, oracle, mid, bid/ask and last price semantics.
-- [ ] Normalize open interest units and contract multipliers.
-- [ ] Normalize funding sign, fraction/percent and payment intervals.
-
-## EPIC 6 — History and analytics
-- [ ] Implement completed interval history collection and retention.
+- [ ] Implement normalized observation schema and decimal/unit handling.
+- [ ] Preserve observation, retrieval and calculation timestamps separately.
+- [ ] Implement completed interval history collection and resumable backfills.
+- [ ] Store explicit gaps; never fabricate or silently fill missing bars.
 - [ ] Store effective-dated units, multipliers, corporate actions and universe membership.
+- [ ] Implement versioned metric calculations and formula fixtures.
+- [ ] Implement per-metric READY/CONDITIONAL/UNAVAILABLE status, reason, coverage and freshness.
+- [ ] Implement metric availability response contract.
+- [ ] Test percentage changes, funding units/intervals, OI units, liquidity semantics and null-vs-zero.
+- [ ] Gate charts/comparisons on real compatible series.
+
+## EPIC 4 — Home and broad screeners
+
+- [ ] Implement eligible Crypto universe crawl or explicitly disclose covered universe.
+- [ ] Implement tokenized RWA underlying discovery and canonical product catalogue.
+- [ ] Implement Crypto/RWA classification and provider-global inclusion checks.
+- [ ] Implement Home headline read model with honest partial/unavailable states.
+- [ ] Implement ranking after full eligible ingestion and active filters.
+- [ ] Implement underlying detail with separate issuer products.
+- [ ] Implement product expansion showing verified deployments and actual venues.
+- [ ] Ensure All Networks returns each issuer product once.
+- [ ] Ensure CSV exports active filters/scope, canonical IDs, units and timestamps.
+
+## EPIC 5 — Issuer, venue and perpetual vertical slices
+
+- [ ] Implement issuer-specific catalogues with coverage reports.
+- [ ] Validate xStocks product identity, deployment mapping and redistribution rights.
+- [ ] Reconcile Robinhood 194 issuer vs 192 matched discrepancy and volume field semantics.
+- [ ] Validate Backpack securities/RFQ/listed-market distinctions.
+- [ ] Validate Ondo and bStocks access before enabling live dependencies.
+- [ ] Implement PreStocks exact mint/supply snapshots with dated scope.
+- [ ] Implement Paimon core snapshot with pagination/legal limitations disclosed.
+- [ ] Implement GeckoTerminal exact pool/token observations.
+- [ ] Implement Hyperliquid HIP-3 exact builder-specific markets.
+- [ ] Implement Lighter RH/Core and Kraken/Backpack perps only for validated IDs.
+- [ ] Fix QA-01: km:NVDA must not include unrelated xyz/mkts contracts.
+- [ ] Normalize mark/index/oracle/mid/bid/ask/last-price semantics.
+- [ ] Normalize open-interest units and contract multipliers.
+- [ ] Normalize funding sign, fraction/percent and payment intervals.
+- [ ] Implement top-five eligible perp preview with View all/Collapse.
+
+## EPIC 6 — History, correlation and funding
+
+- [ ] Store effective-dated membership, multipliers and corporate actions.
 - [ ] Implement aligned aggregate market-value history.
 - [ ] Implement market-wide and individual-asset correlation per approved method.
-- [ ] Implement missing-pair, sample sufficiency and zero-variance checks.
-- [ ] Implement funding comparison with fixed orientation.
-- [ ] Specify and validate fees, execution assumptions and cost scenarios before net cost outputs.
-- [ ] Gate every chart control on real series availability.
+- [ ] Test +1, −1, constant, missing and insufficient-overlap cases.
+- [ ] Enforce aligned timestamps and no forward-fill.
+- [ ] Implement funding comparison with fixed orientation and native interval semantics.
+- [ ] Specify fees, execution assumptions and cost scenarios before net cost outputs.
+- [ ] Keep market-wide correlation unavailable until prerequisites pass.
 
 ## EPIC 7 — DeFi
-- [ ] Implement exact chain/pool/reserve identities.
-- [ ] Integrate Morpho loan-market and Kamino reserve data.
+
+- [ ] Implement exact chain/pool/reserve/loan-market identities.
+- [ ] Integrate validated Morpho loan-market and Kamino reserve subsets.
 - [ ] Define loan asset/collateral orientation and decimals.
 - [ ] Validate APY units and available-liquidity semantics.
-- [ ] Validate collateral-enabled status from actual pair/risk config.
+- [ ] Validate collateral-enabled status from actual pair/risk configuration.
 - [ ] Prevent duplicate pool liquidity and unsupported LP earnings estimates.
+- [ ] Keep Jupiter execution estimates blocked until validated.
+- [ ] Fix QA-07 sticky-header alignment on desktop and mobile.
 
 ## EPIC 8 — Trader Intelligence (specification first)
+
 - [ ] Agree account/wallet identity and access-control model.
 - [ ] Define realized/unrealized PnL, fees, funding, deposits, withdrawals and transfers.
 - [ ] Define reporting window, timezone, exposure, volume, win rate and trade grouping.
@@ -95,7 +120,8 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [ ] Define privacy, retention and user data deletion policy.
 - [ ] Only then implement accounting and any scoring/ranking.
 
-## EPIC 9 — Event Feed (specification first)
+## EPIC 9 — Intelligence Event Feed (specification first)
+
 - [ ] Agree event taxonomy and source hierarchy.
 - [ ] Define entity/product relevance and deduplication.
 - [ ] Define observed/published/effective timestamps and timezones.
@@ -103,18 +129,29 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [ ] Define event evidence, summaries and correction handling.
 - [ ] Defer ranking, urgency/impact scores, causal claims and alerts until validated.
 
-## EPIC 10 — Frontend, QA and launch
-- [ ] Audit design system and create reusable table/card/chart/status components.
-- [ ] Implement loading, empty, unavailable, partial, stale and error states.
+## EPIC 10 — Shared frontend, all 16 pages, QA and launch
+
+- [ ] Build reusable identity navigation and data provenance/status components.
+- [ ] Build reusable metric cards, tables, charts, filters, sorting and CSV export.
+- [ ] Implement loading, empty, unavailable, partial, stale, blocked and error states.
 - [ ] Implement responsive and keyboard-accessible controls.
-- [ ] Add unit tests for formulas and normalization.
-- [ ] Add integration tests for adapters, pagination and persistence.
-- [ ] Add contract tests for API responses and UI state rendering.
-- [ ] Add e2e journeys for underlying → issuer product → deployment → venue.
-- [ ] Add export, back navigation, filters and sort regression tests.
-- [ ] Complete security, performance, recovery and provider quota tests.
-- [ ] Prepare production runbooks, monitoring and rollback plan.
+- [ ] Implement all 16 approved pages; none silently removed due to data gaps.
+- [ ] Preserve origin, filters, selected network, builder, tab and exact entity context.
+- [ ] Fix QA-02 holders fields reappearing where removed/deferred.
+- [ ] Fix QA-03 Basis column reappearing where deferred.
+- [ ] Fix QA-04 Best Venue Gap column reappearing where deferred.
+- [ ] Fix QA-05 Off-Hours Move column reappearing where deferred.
+- [ ] Fix QA-06 Robinhood Tokenized Assets breadcrumb/title.
+- [ ] Fix QA-08 unknown IDs returning a default asset.
+- [ ] Fix QA-09 Crypto dropdown filters and ensure production uses backend data.
+- [ ] Fix QA-10 no Carry/arbitrage or standalone Pre-IPO routes.
+- [ ] Execute inherited 739-case regression matrix against actual implementation.
+- [ ] Add unit, integration, API contract and end-to-end tests.
+- [ ] Test exports, back navigation, filters, sorting, provider failures and mobile layouts.
+- [ ] Complete security, performance, recovery, quota and data-rights checks.
+- [ ] Prepare runbooks, monitoring, backup/restore and rollback plan.
+- [ ] Obtain explicit product-owner launch approval.
 
 ## Definition of done
 
-A task is done only when code is merged, tests are executed, evidence is recorded, metric readiness is updated, documentation reflects the implementation and any remaining limitation is explicit. A mock UI or successful one-off request is not completion evidence.
+A task is done only when code is merged, tests are executed, evidence is recorded, metric readiness is updated, documentation reflects the implementation and remaining limitations are explicit. A mock UI, successful one-off request, written plan or code change without executed evidence is not completion evidence.
