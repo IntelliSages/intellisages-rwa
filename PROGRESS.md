@@ -45,7 +45,7 @@ Enforced behaviours:
 - Unknown canonical IDs return not found; no default asset fallback.
 - Unverified deployments remain explicitly unverified.
 
-The merged implementation includes economic-supply groups, evidence-bearing memberships, effective-dated classifications and provider-global inclusion evidence. It does not yet include effective-dated provider alias history, evidence-backed bridge equivalence, spot/pool/loan-market entities, registry import/reconciliation, authentication or provider ingestion.
+The merged implementation includes economic-supply groups, evidence-bearing memberships, effective-dated classifications, provider-global inclusion evidence and effective-dated provider alias history. It does not yet include evidence-backed bridge equivalence, spot/pool/loan-market entities, registry import/reconciliation, authentication or provider ingestion.
 
 ## 4. Governing product decisions
 
@@ -64,7 +64,7 @@ The merged implementation includes economic-supply groups, evidence-bearing memb
 
 ## 5. Remaining canonical identity work
 
-- Effective-dated provider aliases, symbol/name aliases and contract migration history.
+- Perpetual contract migration history (current feature branch; CI and review pending).
 - Economic-supply groups and evidence-backed bridge/wrapper equivalence.
 - Versioned Crypto/RWA classification and provider-global inclusion evidence.
 - Spot-market, pool and lending-market identities.
@@ -95,7 +95,7 @@ The merged work does not establish that two products are economically equivalent
 
 Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, a controlled close-period endpoint, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task.
 
-Validation on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`: GitHub Actions push run `40986320572` passed both quality jobs. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. This increment is not merged; PR creation follows a final CI pass after this evidence update.
+Final implementation commit `626ea47bc3de761a893a06bef73b2c79247c31a3` passed push run `40986565711` and PR run `40986712177`. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. PR #4 is merged at `28ac009c88c9062657a422d01f80e83b91188456`.
 
 
 ## 10. Perpetual contract migration history — implementation in progress

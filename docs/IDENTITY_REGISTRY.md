@@ -72,12 +72,12 @@ SQLAlchemy 2.x models target PostgreSQL for shared environments. Alembic migrati
 
 - PR #2 merged: initial canonical identity foundation.
 - PR #3 merged at `85558c8bf95c28f3b78dddcee00549e37c4b4160`: economic-supply groups, evidence-bearing memberships and versioned classifications. Both frontend/backend quality gates passed on the PR head.
-- Effective-dated provider alias history implementation passed GitHub Actions push run `40986320572` on commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`: backend Ruff, 22 tests, Alembic upgrade/downgrade, frontend dependency install, ESLint, TypeScript and production build. PR creation is gated on a final CI pass after the documentation update.
+- PR #4 merged at `28ac009c88c9062657a422d01f80e83b91188456`. Final implementation commit `626ea47bc3de761a893a06bef73b2c79247c31a3` passed push run `40986565711` and PR run `40986712177`; backend Ruff, 22 tests, Alembic upgrade/downgrade and frontend dependency install, ESLint, TypeScript and production build passed.
+- Perpetual contract migration history is implemented on the current feature branch; its final push and PR CI evidence is pending.
 
 ## Explicitly not delivered
 
 - Spot-market, pool and lending-market identities.
-- Spot-market, pool and lending-market registry entities.
 - Registry bulk import, reconciliation and unresolved-mapping workflow.
 - Authentication/authorization and audit logging for registry mutations.
 - Provider ingestion, source observations, market metrics or frontend integration.

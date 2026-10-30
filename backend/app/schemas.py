@@ -112,6 +112,9 @@ class PerpetualMigrationCreate(StrictModel):
 
 class PerpetualMigrationRead(PerpetualMigrationCreate):
     id: str
+    previous_native_market_id: str
+    new_native_market_id: str | None
+    previous_native_symbol: str
 
 
 class AliasCreate(StrictModel):
