@@ -4,7 +4,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ productId: string }> },
 ) {
-  const base = process.env.RWA_API_BASE_URL?.replace(/\\/+$/, "");
+  const base = process.env.RWA_API_BASE_URL?.replace(/\/+$/, "");
   if (!base) {
     return NextResponse.json(
       { code: "API_NOT_CONFIGURED", detail: "Set RWA_API_BASE_URL to the RWAs Intelligence API base URL." },
