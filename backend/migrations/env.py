@@ -62,6 +62,13 @@ def _log_postgresql_target(connection):
 
 
 def _verify_postgresql_schema(connection):
+    revision = connection.exec_driver_sql(
+        "SELECT version_num FROM alembic_version"
+    ).scalar_one_or_none()
+    if revision is None:
+        logger.info("Alembic schema is at base revision; no application tables expected.")
+        return
+
     missing = connection.exec_driver_sql(
         """
         SELECT required.table_name
@@ -73,15 +80,14 @@ def _verify_postgresql_schema(connection):
     ).scalars().all()
     if missing:
         raise RuntimeError(
-            "Alembic completed but the configured PostgreSQL database is "
-            "missing required application tables: "
+            "Alembic recorded revision "
+            + revision
+            + " but the configured PostgreSQL database is missing required "
+            "application tables: "
             + ", ".join(missing)
             + ". Check the Render DATABASE_URL resource and schema search_path."
         )
 
-    revision = connection.exec_driver_sql(
-        "SELECT version_num FROM alembic_version"
-    ).scalar_one_or_none()
     logger.info(
         "Alembic schema verification passed: revision=%s required_tables=%s",
         revision,
