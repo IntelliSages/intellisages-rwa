@@ -194,3 +194,101 @@ def list_tokenized_products(
             ),
         ),
     )
+
+
+
+@router.get(
+    "/tokenized-products/{product_id}",
+    response_model=schemas.TokenizedProductCatalogueItem,
+)
+def get_tokenized_product(
+    product_id: str,
+    as_of: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """Return one exact, currently RWA-classified issuer product.
+
+    This is an identity detail endpoint, not a market-data endpoint. It never
+    resolves by ticker, symbol, issuer marketing name or fuzzy matching.
+    """
+    effective_date = as_of or date.today()
+    row = db.execute(
+        select(
+            models.IssuerProduct,
+            models.Issuer,
+            models.UnderlyingAsset,
+            models.ProductClassification,
+        )
+        .join(models.Issuer, models.Issuer.id == models.IssuerProduct.issuer_id)
+        .join(
+            models.UnderlyingAsset,
+            models.UnderlyingAsset.id == models.IssuerProduct.underlying_id,
+        )
+        .join(
+            models.ProductClassification,
+            (models.ProductClassification.entity_type == "issuer_product")
+            & (models.ProductClassification.entity_id == models.IssuerProduct.id)
+            & (models.ProductClassification.classification == "rwa")
+            & (models.ProductClassification.effective_from <= effective_date)
+            & (
+                models.ProductClassification.effective_to.is_(None)
+                | (models.ProductClassification.effective_to > effective_date)
+            ),
+        )
+        .where(models.IssuerProduct.id == product_id)
+    ).first()
+    if row is None:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=404,
+            detail="RWA-classified issuer product not found for the requested date.",
+        )
+
+    product, issuer, underlying, classification = row
+    deployment_rows = db.execute(
+        select(models.Deployment, models.Network)
+        .join(models.Network, models.Network.id == models.Deployment.network_id)
+        .where(models.Deployment.issuer_product_id == product.id)
+        .order_by(models.Network.display_name, models.Deployment.id)
+    ).all()
+    deployments = [
+        schemas.CatalogueDeploymentRead(
+            id=deployment.id,
+            network=schemas.CatalogueNetworkRead(
+                id=network.id,
+                namespace=network.namespace,
+                display_name=network.display_name,
+                family=network.family,
+            ),
+            native_identifier=deployment.native_identifier,
+            representation_type=deployment.representation_type,
+            is_verified=deployment.is_verified,
+        )
+        for deployment, network in deployment_rows
+    ]
+    return schemas.TokenizedProductCatalogueItem(
+        id=product.id,
+        canonical_key=product.canonical_key,
+        native_product_id=product.native_product_id,
+        display_name=product.display_name,
+        symbol=product.symbol,
+        instrument_form=product.instrument_form,
+        unit_description=product.unit_description,
+        representation_type=product.representation_type,
+        issuer=schemas.CatalogueIssuerRead(id=issuer.id, legal_name=issuer.legal_name),
+        underlying=schemas.CatalogueUnderlyingRead(
+            id=underlying.id,
+            display_name=underlying.display_name,
+            asset_type=underlying.asset_type,
+        ),
+        classification=schemas.CatalogueClassificationRead(
+            classification="rwa",
+            effective_from=classification.effective_from,
+            effective_to=classification.effective_to,
+            source=classification.source,
+            evidence_ref=classification.evidence_ref,
+            provider_global_included=classification.provider_global_included,
+        ),
+        deployments=deployments,
+        unverified_deployment_count=sum(not item.is_verified for item in deployments),
+    )
