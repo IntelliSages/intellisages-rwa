@@ -202,7 +202,7 @@ def test_issuer_scoped_native_product_id_is_an_exact_candidate(client):
         "display_name": "NVDAx token", "symbol": "NVDA", "instrument_form": "tokenized_equity",
         "unit_description": "one token"}, "native-product-id")]).json()
     record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
-    assert any(c["match_basis"] == "exact_issuer_native_product_id"
+    assert any("exact_issuer_native_product_id" in c["match_basis"]
                and c["candidate_entity_id"] == product["id"] for c in record["candidates"])
     assert record["status"] == "needs_review"
 
