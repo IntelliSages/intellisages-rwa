@@ -180,6 +180,10 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
     detail_dir.mkdir(parents=True, exist_ok=True)
 
     rwa_list = _list_payload(client.get_json(RWA_LIST_PATH), RWA_LIST_PATH)
+    if not rwa_list:
+        raise RuntimeError("CoinGecko returned an empty RWA list; refusing to create a zero-coverage snapshot.")
+    if limit is not None and limit < 1:
+        raise ValueError("--limit must be a positive integer.")
     _write_json(output_dir / "rwas-list.json", rwa_list)
     list_hash = sha256_bytes((output_dir / "rwas-list.json").read_bytes())
 
@@ -226,6 +230,8 @@ def fetch_snapshot(output_dir: Path, client: CoinGeckoClient, limit: int | None 
             )
             if not isinstance(detail, dict) or detail.get("id") != rwa_id:
                 raise RuntimeError("detail response ID did not match requested RWA ID")
+            if not isinstance(detail.get("tokens"), list):
+                raise RuntimeError("detail response omitted the requested tokens array")
             _write_json(target, detail)
             details_succeeded += 1
         except Exception as exc:
@@ -409,11 +415,14 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
     if network_map:
         mapping.update(network_map)
     slugs: set[str] = set()
+    tokens_without_platforms = 0
     for detail in details.values():
         for token in detail.get("tokens", []) if isinstance(detail.get("tokens"), list) else []:
             platforms = token.get("platforms") if isinstance(token, dict) else None
-            if isinstance(platforms, dict):
+            if isinstance(platforms, dict) and platforms:
                 slugs.update(str(k) for k, v in platforms.items() if isinstance(v, str) and v.strip())
+            else:
+                tokens_without_platforms += 1
     rows = []
     unknown = []
     platform_evidence: dict[str, list[dict[str, Any]]] = {slug: [] for slug in slugs}
@@ -445,7 +454,7 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
             )),
         })
     return rows, {"platform_slugs_discovered": len(slugs), "supported_platform_slugs": len(rows),
-                  "unsupported_platform_slugs": unknown}
+                  "unsupported_platform_slugs": unknown, "tokens_without_platforms": tokens_without_platforms}
 
 
 def build_product_rows(manifest: dict[str, Any], details: dict[str, dict[str, Any]],
@@ -523,7 +532,7 @@ def build_deployment_rows(manifest: dict[str, Any], details: dict[str, dict[str,
             token_id_counts[token["id"]] = token_id_counts.get(token["id"], 0) + 1
     duplicate_token_ids = {key for key, count in token_id_counts.items() if count > 1}
     counters = {"platform_entries": 0, "deployments_stageable": 0,
-                "duplicate_token_ids": len(duplicate_token_ids),
+                "duplicate_token_ids": len(duplicate_token_ids), "tokens_without_platforms": 0,
                 "unresolved_product_alias": 0, "unresolved_network_alias": 0,
                 "unsupported_platform_slugs": set(), "invalid_platform_addresses": 0}
     for rwa_id, detail, token in extract_tokens(details):
@@ -532,8 +541,13 @@ def build_deployment_rows(manifest: dict[str, Any], details: dict[str, dict[str,
             continue
         product_id = product_map.get(token_id)
         platforms = token.get("platforms") if isinstance(token.get("platforms"), dict) else {}
+        if not platforms:
+            counters["tokens_without_platforms"] += 1
         for slug, address in platforms.items():
             if not isinstance(address, str) or not address.strip():
+                counters["invalid_platform_addresses"] += 1
+                continue
+            if mapping.get(slug, {}).get("family") == "evm" and not re.fullmatch(r"0x[a-fA-F0-9]{40}", address):
                 counters["invalid_platform_addresses"] += 1
                 continue
             counters["platform_entries"] += 1
@@ -609,6 +623,10 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
         "issuer_ids_only_in_issuer_list": len(issuer_list_ids - issuer_ids),
         "issuer_ids_only_in_token_details": len(issuer_ids - issuer_list_ids),
         "tokens_without_issuer_id": tokens_missing_issuer,
+        "tokens_without_platforms": sum(
+            1 for _, _, token in token_rows
+            if not isinstance(token.get("platforms"), dict) or not token.get("platforms")
+        ),
         "provider_platform_contract_entries": len(platform_pairs),
         "unsupported_platform_slugs": [],
         "staged_phases": sorted(manifest.get("staged_phases", {}).keys()),
@@ -621,6 +639,27 @@ def build_coverage(output_dir: Path, manifest: dict[str, Any],
     if extra:
         coverage.update(extra)
     return coverage
+
+
+def chunk_import_rows(rows: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Chunk import rows under both the API row-count and serialized-payload limits."""
+    chunks: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+    current_bytes = 2
+    for row in rows:
+        row_bytes = len(canonical_json(row)) + 1
+        if row_bytes > 50_000:
+            identity = f"{row.get('entity_type')}:{row.get('source_namespace')}:{row.get('external_id')}"
+            raise RuntimeError(f"Import row exceeds the 50 KB payload limit: {identity}")
+        if current and (len(current) >= MAX_BATCH_RECORDS or current_bytes + row_bytes > 4_500_000):
+            chunks.append(current)
+            current = []
+            current_bytes = 2
+        current.append(row)
+        current_bytes += row_bytes
+    if current:
+        chunks.append(current)
+    return chunks
 
 
 class RegistryClient:
@@ -659,8 +698,7 @@ class RegistryClient:
     def stage_rows(self, rows: list[dict[str, Any]], submitted_by: str,
                    source_version: str) -> list[dict[str, Any]]:
         staged = []
-        for offset in range(0, len(rows), MAX_BATCH_RECORDS):
-            chunk = rows[offset:offset + MAX_BATCH_RECORDS]
+        for chunk in chunk_import_rows(rows):
             result = self.request("POST", "/api/v1/registry/imports", {
                 "source": PROVIDER, "source_version": source_version,
                 "submitted_by": submitted_by, "records": chunk,
@@ -756,17 +794,18 @@ def stage_phase(output_dir: Path, phase: str, submitted_by: str,
     ))
     phase_state["last_counters"] = counters
     if phase == "networks":
-        phase_complete = not counters.get("unsupported_platform_slugs")
+        phase_complete = not counters.get("unsupported_platform_slugs") and counters.get("tokens_without_platforms", 0) == 0
     elif phase == "products":
         phase_complete = not any(counters.get(k, 0) for k in (
             "unresolved_underlying_alias", "unresolved_issuer_alias",
             "tokens_without_provider_id", "tokens_without_issuer", "duplicate_token_ids"
-        ))
+        )) and counters.get("tokens_discovered", 0) > 0
     elif phase == "deployments":
         phase_complete = not any(counters.get(k, 0) for k in (
             "unresolved_product_alias", "unresolved_network_alias",
-            "invalid_platform_addresses", "unsupported_platform_slugs", "duplicate_token_ids"
-        ))
+            "invalid_platform_addresses", "unsupported_platform_slugs", "duplicate_token_ids",
+            "tokens_without_platforms"
+        )) and counters.get("platform_entries", 0) > 0
     else:
         phase_complete = counters.get("missing_underlying_name", 0) == 0
     phase_state["status"] = "complete" if phase_complete else "in_progress"

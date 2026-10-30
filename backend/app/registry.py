@@ -14,6 +14,7 @@ ENTITY_MODELS = {
     "underlying": models.UnderlyingAsset,
     "issuer": models.Issuer,
     "network": models.Network,
+    "network": models.Network,
     "issuer_product": models.IssuerProduct,
     "deployment": models.Deployment,
     "venue": models.Venue,
@@ -294,7 +295,7 @@ def get_entity(entity_type: str, entity_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Entity type not found.")
     entity = _require(db, model, entity_id, entity_type)
     result = {"entity_type": entity_type, "id": entity.id}
-    for field in ("canonical_key", "display_name", "legal_name", "native_product_id", "symbol", "namespace", "native_identifier", "native_market_id", "native_symbol", "domain", "builder_id"):
+    for field in ("canonical_key", "display_name", "legal_name", "native_product_id", "symbol", "namespace", "display_name", "family", "native_identifier", "native_market_id", "native_symbol", "domain", "builder_id"):
         if hasattr(entity, field):
             result[field] = getattr(entity, field)
     return result

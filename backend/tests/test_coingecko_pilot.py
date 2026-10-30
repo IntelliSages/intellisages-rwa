@@ -243,3 +243,32 @@ def test_phased_pipeline_waits_for_approved_parents_and_can_resume_partial_phase
     assert saved["staged_phases"]["networks"]["status"] == "complete"
     assert saved["staged_phases"]["deployments"]["status"] == "complete"
     assert len(saved["staged_batch_ids"]) == 5
+
+
+
+def test_import_row_chunking_obeys_count_and_payload_limits():
+    from app.providers.coingecko_pilot import chunk_import_rows
+
+    rows = [{"entity_type": "issuer", "source_namespace": "issuer_id",
+             "external_id": f"issuer-{i}", "payload": {"canonical_payload": {"legal_name": "X"}}}
+            for i in range(401)]
+    chunks = chunk_import_rows(rows)
+    assert [len(chunk) for chunk in chunks] == [400, 1]
+    oversized = [{"entity_type": "underlying", "source_namespace": "rwa_id",
+                  "external_id": "large", "payload": {"name": "x" * 50_100}}]
+    import pytest
+    with pytest.raises(RuntimeError, match="50 KB"):
+        chunk_import_rows(oversized)
+
+
+def test_snapshot_rejects_detail_response_without_tokens_array(tmp_path):
+    class MissingTokens(FakeCoinGecko):
+        def get_json(self, path, params=None):
+            if path == "rwas/nvidia":
+                return {"id": "nvidia", "name": "NVIDIA"}
+            return super().get_json(path, params)
+
+    manifest = fetch_snapshot(tmp_path, MissingTokens())
+    assert manifest["details_succeeded"] == 0
+    assert manifest["details_failed"] == 1
+    assert manifest["detail_errors"][0]["rwa_id"] == "nvidia"
