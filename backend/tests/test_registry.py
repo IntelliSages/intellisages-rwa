@@ -95,7 +95,7 @@ def test_builder_scoped_perpetual_requires_domain(client):
 def test_provider_alias_is_unique_and_target_must_exist(client):
     underlying, _, _ = create_base_entities(client)
     payload = {"provider":"coingecko","namespace":"coin","external_id":"nvidia-tokenized",
-        "entity_type":"underlying","entity_id":underlying["id"],"is_verified":True}
+        "entity_type":"underlying","entity_id":underlying["id"],"effective_from":"2026-01-01","is_verified":True}
     assert client.post("/api/v1/registry/aliases", json=payload).status_code == 201
     assert client.post("/api/v1/registry/aliases", json=payload).status_code == 409
     payload["external_id"] = "unmapped"
@@ -104,7 +104,7 @@ def test_provider_alias_is_unique_and_target_must_exist(client):
 
 def test_alias_resolution_is_exact_not_symbol_fuzzy(client):
     underlying, _, _ = create_base_entities(client)
-    client.post("/api/v1/registry/aliases", json={"provider":"coingecko","namespace":"coin","external_id":"nvidia-tokenized","entity_type":"underlying","entity_id":underlying["id"]})
+    client.post("/api/v1/registry/aliases", json={"provider":"coingecko","namespace":"coin","external_id":"nvidia-tokenized","entity_type":"underlying","entity_id":underlying["id"],"effective_from":"2026-01-01"})
     found = client.get("/api/v1/registry/aliases/resolve", params={"provider":"coingecko","namespace":"coin","external_id":"nvidia-tokenized"})
     missing = client.get("/api/v1/registry/aliases/resolve", params={"provider":"coingecko","namespace":"coin","external_id":"NVDA"})
     assert found.status_code == 200
@@ -113,3 +113,55 @@ def test_alias_resolution_is_exact_not_symbol_fuzzy(client):
 def test_unknown_ids_are_not_resolved_to_default_entities(client):
     response = client.get("/api/v1/registry/entities/underlying/not-a-real-id")
     assert response.status_code == 404
+
+def test_provider_alias_effective_periods_resolve_historical_targets(client):
+    underlying, _, _ = create_base_entities(client)
+    second = client.post("/api/v1/registry/underlyings", json={
+        "canonical_key":"equity:nvidia-adr","display_name":"NVIDIA ADR","asset_type":"equity"
+    }).json()
+    first_alias = {
+        "provider":"coingecko","namespace":"symbol","external_id":"NVDA",
+        "entity_type":"underlying","entity_id":underlying["id"],
+        "effective_from":"2026-01-01","effective_to":"2026-06-01",
+    }
+    second_alias = {**first_alias,"entity_id":second["id"],"effective_from":"2026-06-01","effective_to":None}
+    assert client.post("/api/v1/registry/aliases", json=first_alias).status_code == 201
+    assert client.post("/api/v1/registry/aliases", json=second_alias).status_code == 201
+
+    before_change = client.get("/api/v1/registry/aliases/resolve", params={
+        "provider":"coingecko","namespace":"symbol","external_id":"NVDA","as_of":"2026-05-31"
+    })
+    after_change = client.get("/api/v1/registry/aliases/resolve", params={
+        "provider":"coingecko","namespace":"symbol","external_id":"NVDA","as_of":"2026-06-01"
+    })
+    before_start = client.get("/api/v1/registry/aliases/resolve", params={
+        "provider":"coingecko","namespace":"symbol","external_id":"NVDA","as_of":"2025-12-31"
+    })
+    assert before_change.status_code == 200
+    assert before_change.json()["entity_id"] == underlying["id"]
+    assert after_change.status_code == 200
+    assert after_change.json()["entity_id"] == second["id"]
+    assert before_start.status_code == 404
+
+def test_provider_alias_rejects_overlapping_effective_periods(client):
+    underlying, _, _ = create_base_entities(client)
+    second = client.post("/api/v1/registry/underlyings", json={
+        "canonical_key":"equity:nvidia-adr","display_name":"NVIDIA ADR","asset_type":"equity"
+    }).json()
+    first = {
+        "provider":"coingecko","namespace":"name","external_id":"NVIDIA",
+        "entity_type":"underlying","entity_id":underlying["id"],
+        "effective_from":"2026-01-01","effective_to":None,
+    }
+    overlapping = {**first,"entity_id":second["id"],"effective_from":"2027-01-01"}
+    assert client.post("/api/v1/registry/aliases", json=first).status_code == 201
+    assert client.post("/api/v1/registry/aliases", json=overlapping).status_code == 409
+
+def test_provider_alias_requires_valid_effective_period(client):
+    underlying, _, _ = create_base_entities(client)
+    invalid = {
+        "provider":"coingecko","namespace":"symbol","external_id":"NVDA",
+        "entity_type":"underlying","entity_id":underlying["id"],
+        "effective_from":"2026-06-01","effective_to":"2026-06-01",
+    }
+    assert client.post("/api/v1/registry/aliases", json=invalid).status_code == 422

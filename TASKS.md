@@ -21,7 +21,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 ## EPIC 1 — Canonical identity and classification registry
 
 - [~] Define canonical entities/IDs for underlying, issuer, issuer product, network, deployment, venue, perp contract and provider alias.
-- [ ] Add effective-dated provider aliases, symbol/name aliases and contract migrations.
+- [~] Add effective-dated provider aliases and exact symbol/name namespaces; contract migration history remains open.
 - [~] Add representation type: independent issuance, bridge/wrapper or unknown.
 - [~] Add effective-dated economic-supply groups/memberships with evidence references and explicit verification.
 - [~] Add versioned underlying/product classification and provider-global inclusion evidence.
@@ -31,7 +31,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
 - [x] Ensure unknown IDs return not found, never a default asset.
 
-**Current baseline:** PR #2 is merged. Follow-on branch `feat/identity-supply-classification` adds economic-supply groups and effective-dated classification records; acceptance remains pending CI. Effective-dated provider aliases, contract migration history, spot/pool/loan-market identities, bulk reconciliation and access controls remain open.
+**Current baseline:** PRs #2 and #3 are merged. Effective-dated provider alias history is the next focused increment; contract migration history, spot/pool/loan-market identities, bulk reconciliation and access controls remain open.
 
 ## EPIC 2 — Provider adapters, rights and ingestion
 

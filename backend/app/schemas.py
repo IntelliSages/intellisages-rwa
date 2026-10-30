@@ -81,11 +81,29 @@ class AliasCreate(StrictModel):
     provider: str = Field(min_length=1, max_length=100)
     namespace: str = Field(min_length=1, max_length=100)
     external_id: str = Field(min_length=1, max_length=220)
+    effective_from: date
+    effective_to: date | None = None
     entity_type: EntityType
     entity_id: str
     evidence_ref: str | None = Field(default=None, max_length=500)
     is_verified: bool = False
-class AliasRead(AliasCreate):
+
+    @model_validator(mode="after")
+    def valid_period(self):
+        if self.effective_to is not None and self.effective_to <= self.effective_from:
+            raise ValueError("effective_to must be later than effective_from")
+        return self
+
+class AliasRead(StrictModel):
+    provider: str
+    namespace: str
+    external_id: str
+    effective_from: date | None
+    effective_to: date | None
+    entity_type: EntityType
+    entity_id: str
+    evidence_ref: str | None
+    is_verified: bool
     id: str
 
 class SupplyGroupCreate(StrictModel):

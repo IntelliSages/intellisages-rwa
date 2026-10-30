@@ -31,7 +31,8 @@ Open /docs for the generated OpenAPI contract and /healthz for process health.
 - A deployment is unique by network + normalized native contract/mint identifier.
 - EVM addresses are validated as 20-byte hexadecimal addresses and normalized to lowercase for identity comparison.
 - Non-EVM identifiers are preserved exactly; Solana mint identifiers are case-sensitive.
-- Provider aliases are unique by provider + namespace + external ID and must target an existing canonical entity.
+- Provider aliases target an existing canonical entity and are effective-dated; the same provider + namespace + external ID cannot have overlapping periods.
+- Alias resolution is exact and accepts an optional `as_of` date. Use provider namespaces such as `symbol` and `name` for exact aliases; no fuzzy matching is performed.
 - Builder-scoped perpetual contracts require an exact domain. Native market IDs remain distinct from display symbols.
 - Unknown IDs are not redirected to a default asset.
 
@@ -46,6 +47,7 @@ The API does not infer legal ownership, backing, redemption rights, bridge equiv
 - Deployments: POST/GET /api/v1/registry/deployments
 - Venues: POST/GET /api/v1/registry/venues
 - Perpetual contracts: POST/GET /api/v1/registry/perpetual-contracts
-- Provider aliases: POST/GET /api/v1/registry/aliases
+- Provider aliases: POST/GET /api/v1/registry/aliases (effective_from required; effective_to optional)
+- Exact alias resolution: GET /api/v1/registry/aliases/resolve?provider=...&namespace=...&external_id=...&as_of=YYYY-MM-DD
 
 This increment deliberately omits update/delete endpoints, provider ingestion, public registration, authentication and market metrics. Registry mutations are administrative and must be protected before any shared environment is exposed.

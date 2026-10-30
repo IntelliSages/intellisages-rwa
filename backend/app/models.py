@@ -86,11 +86,13 @@ class PerpetualContract(Base):
 
 class ProviderAlias(Base):
     __tablename__ = "provider_aliases"
-    __table_args__ = (UniqueConstraint("provider", "namespace", "external_id", name="uq_provider_alias_external"),)
+    __table_args__ = (UniqueConstraint("provider", "namespace", "external_id", "effective_from", name="uq_provider_alias_external_start"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     provider: Mapped[str] = mapped_column(String(100), index=True)
     namespace: Mapped[str] = mapped_column(String(100))
     external_id: Mapped[str] = mapped_column(String(220))
+    effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
     entity_type: Mapped[str] = mapped_column(String(40))
     entity_id: Mapped[str] = mapped_column(String(36), index=True)
     evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
