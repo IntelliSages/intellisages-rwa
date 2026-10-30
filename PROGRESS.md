@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** Frontend foundation and canonical identity registry increments PR #2 and PR #3 are merged. Effective-dated provider alias history is in implementation; no CI result is claimed until the new branch checks finish.
+**Status:** Frontend foundation and canonical identity registry increments PR #2 and PR #3 are merged. Effective-dated provider alias history is implemented on a feature branch; its full CI suite passed on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`. PR creation is gated on the final documentation commit passing again.
 
 ## 1. Verified implementation evidence
 
@@ -93,4 +93,6 @@ The merged work does not establish that two products are economically equivalent
 
 ## 9. Effective-dated provider aliases — in progress
 
-Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, a controlled close-period endpoint, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task. CI has not yet been completed for this increment.
+Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to provider aliases, exact symbol/name namespaces, a controlled close-period endpoint, non-overlapping alias reassignment and historical resolution using an explicit `as_of` date. Existing rows retain a null start date because their historical start is unknown. Contract migration history remains a separate follow-on task.
+
+Validation on implementation commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`: GitHub Actions push run `40986320572` passed both quality jobs. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. This increment is not merged; PR creation follows a final CI pass after this evidence update.

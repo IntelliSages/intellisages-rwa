@@ -39,6 +39,7 @@ All routes are under /api/v1/registry:
 | Perpetual contracts | POST/GET /perpetual-contracts | Exact venue/domain/native market |
 | Provider aliases | POST/GET /aliases | Effective-dated provider-native identity mapping |
 | Close alias period | PATCH /aliases/{alias_id}/close | Set the exclusive end date; no reopening or general edits |
+| Close alias period | PATCH /aliases/{alias_id}/close | Set the exclusive end date; no reopening or general edits |
 | Alias resolver | GET /aliases/resolve | Exact provider + namespace + external ID; optional `as_of=YYYY-MM-DD` |
 | Supply groups | POST/GET /supply-groups | Economic-supply grouping |
 | Supply memberships | POST/GET /supply-memberships | Effective-dated, evidence-bearing membership |
@@ -63,7 +64,7 @@ SQLAlchemy 2.x models target PostgreSQL for shared environments. Alembic migrati
 
 - PR #2 merged: initial canonical identity foundation.
 - PR #3 merged at `85558c8bf95c28f3b78dddcee00549e37c4b4160`: economic-supply groups, evidence-bearing memberships and versioned classifications. Both frontend/backend quality gates passed on the PR head.
-- Effective-dated provider alias history is in implementation; CI evidence will be added only after the branch's final commit passes all gates.
+- Effective-dated provider alias history implementation passed GitHub Actions push run `40986320572` on commit `7b5b9a3e82f6d8f406eff8f199b8e8a5dbbd197e`: backend Ruff, 22 tests, Alembic upgrade/downgrade, frontend dependency install, ESLint, TypeScript and production build. PR creation is gated on a final CI pass after the documentation update.
 
 ## Explicitly not delivered
 
