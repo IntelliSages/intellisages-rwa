@@ -181,13 +181,15 @@ def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
         with engine.connect() as connection:
             connection.exec_driver_sql(f'CREATE SCHEMA "{schema_name}"')
             connection.commit()
+        with schema_engine.connect() as connection:
+            connection.exec_driver_sql(f'SET search_path TO "{schema_name}", public')
+            connection.commit()
 
-        schema_url = url.update_query_dict({"options": f"-csearch_path={schema_name},public"})
-        schema_engine = create_engine(schema_url)
+        # Keep the test URL's driver and credentials unchanged. Set search_path
+        # on the isolated test connection itself so URL parsing cannot alter it.
+        schema_engine = create_engine(database_url)
         config = Config("alembic.ini")
-        # Alembic Config uses ConfigParser interpolation; URL query parameters
-        # contain percent-escapes. Escape percent signs before setting the URL.
-        monkeypatch.setenv("DATABASE_URL", str(schema_url).replace("%", "%%"))
+        monkeypatch.setenv("DATABASE_URL", database_url)
 
         command.upgrade(config, "head")
 
