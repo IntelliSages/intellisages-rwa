@@ -12,11 +12,13 @@ services:
     runtime: python
     region: frankfurt
     plan: free
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    # Free web services do not support pre-deploy commands.
-    # Run migrations at startup before serving requests.
-    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Keep the service rooted at the repository so Render always resolves
+    # the backend working directory explicitly in the start command.
+    rootDir: .
+    buildCommand: pip install -r backend/requirements.txt
+    # Free web services do not support pre-deploy commands. Run migrations
+    # against the service DATABASE_URL before starting the API process.
+    startCommand: cd backend && python -m alembic -c alembic.ini upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /healthz
     autoDeployTrigger: commit
     envVars:
