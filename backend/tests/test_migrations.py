@@ -38,3 +38,40 @@ def test_effective_alias_migration_preserves_legacy_alias_without_inventing_date
     engine.dispose()
 
     command.downgrade(config, "base")
+
+def test_downgrade_refuses_to_collapse_multiple_alias_periods(tmp_path, monkeypatch):
+    database_path = tmp_path / "alias-history.db"
+    database_url = f"sqlite:///{database_path}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    config = Config("alembic.ini")
+    command.upgrade(config, "head")
+
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO provider_aliases
+                    (id, provider, namespace, external_id, effective_from, effective_to,
+                     entity_type, entity_id, evidence_ref, is_verified)
+                VALUES
+                    ('alias-period-1', 'coingecko', 'symbol', 'NVDA', '2026-01-01', '2026-06-01',
+                     'underlying', 'underlying-a', 'evidence-a', 0),
+                    ('alias-period-2', 'coingecko', 'symbol', 'NVDA', '2026-06-01', NULL,
+                     'underlying', 'underlying-b', 'evidence-b', 0)
+                """
+            )
+        )
+    engine.dispose()
+
+    import pytest
+    with pytest.raises(RuntimeError, match="multiple periods"):
+        command.downgrade(config, "0002_supply_classification")
+
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        count = connection.execute(
+            text("SELECT COUNT(*) FROM provider_aliases WHERE external_id = 'NVDA'")
+        ).scalar_one()
+        assert count == 2
+    engine.dispose()

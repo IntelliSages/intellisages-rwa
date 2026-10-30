@@ -18,6 +18,23 @@ def upgrade():
         )
 
 def downgrade():
+    bind = op.get_bind()
+    duplicate_history = bind.execute(
+        sa.text(
+            """
+            SELECT provider, namespace, external_id
+            FROM provider_aliases
+            GROUP BY provider, namespace, external_id
+            HAVING COUNT(*) > 1
+            LIMIT 1
+            """
+        )
+    ).first()
+    if duplicate_history:
+        raise RuntimeError(
+            "Cannot downgrade provider alias history while multiple periods exist for one external alias."
+        )
+
     with op.batch_alter_table("provider_aliases", recreate="always") as batch_op:
         batch_op.drop_constraint("uq_provider_alias_external_start", type_="unique")
         batch_op.drop_column("effective_to")

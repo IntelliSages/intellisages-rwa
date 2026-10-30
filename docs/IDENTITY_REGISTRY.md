@@ -37,7 +37,8 @@ All routes are under /api/v1/registry:
 | Deployments | POST/GET /deployments | Product-specific chain representation |
 | Venues | POST/GET /venues | Venue/protocol identity |
 | Perpetual contracts | POST/GET /perpetual-contracts | Exact venue/domain/native market |
-| Provider aliases | POST/GET /aliases | Provider-native identity mapping |
+| Provider aliases | POST/GET /aliases | Effective-dated provider-native identity mapping |
+| Close alias period | PATCH /aliases/{alias_id}/close | Set the exclusive end date; no reopening or general edits |
 | Alias resolver | GET /aliases/resolve | Exact provider + namespace + external ID; optional `as_of=YYYY-MM-DD` |
 | Supply groups | POST/GET /supply-groups | Economic-supply grouping |
 | Supply memberships | POST/GET /supply-memberships | Effective-dated, evidence-bearing membership |
@@ -52,7 +53,7 @@ New alias records require `effective_from`; `effective_to` is optional and must 
 
 Use `PATCH /aliases/{alias_id}/close` to set an alias end date once; the operation rejects a date at/before its start, repeated closure, and overlap with another alias. The resolver accepts `as_of=YYYY-MM-DD`. If omitted, it resolves against the API server's current date. Use provider namespaces such as `symbol` and `name` for exact symbol/name aliases. They remain provider-scoped hints and never trigger fuzzy matching.
 
-Migration 0003 leaves the start date null for pre-existing alias rows because their historical start is unknown. These legacy rows remain resolvable until an explicit end date is recorded. A null historical start is not evidence that the alias was valid at any particular past date.
+Migration 0003 leaves the start date null for pre-existing alias rows because their historical start is unknown. Downgrade refuses to collapse multiple historical periods into the former single-alias constraint. These legacy rows remain resolvable until an explicit end date is recorded. A null historical start is not evidence that the alias was valid at any particular past date.
 
 ## Database and migration
 
