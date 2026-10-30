@@ -105,7 +105,9 @@ def test_perpetual_contract_migration_table_upgrades_and_downgrades_cleanly(tmp_
         }
         assert {
             "id", "predecessor_contract_id", "successor_contract_id", "event_type",
-            "effective_at", "source", "evidence_ref", "notes", "is_verified",
+            "effective_at", "previous_native_market_id", "new_native_market_id",
+            "previous_native_symbol", "new_native_symbol", "source", "evidence_ref",
+            "notes", "is_verified",
         }.issubset(columns)
     engine.dispose()
 

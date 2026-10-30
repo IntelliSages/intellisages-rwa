@@ -267,6 +267,30 @@ def test_perpetual_contract_migration_rejects_cycles_and_self_links(client):
     assert self_link.status_code == 422
 
 
+def test_perpetual_symbol_change_preserves_old_and_new_native_symbol_without_new_contract(client):
+    venue = client.post("/api/v1/registry/venues", json={
+        "canonical_key": "venue:hyperliquid", "display_name": "Hyperliquid", "venue_type": "perp_dex"
+    }).json()
+    contract = create_perpetual(
+        client, venue, "0x123", "NVDA-PERP", "perp:hl:nvda", domain="km", builder_id="km"
+    ).json()
+    response = client.post("/api/v1/registry/perpetual-contract-migrations", json={
+        "predecessor_contract_id": contract["id"],
+        "successor_contract_id": None,
+        "event_type": "symbol_changed",
+        "effective_at": "2026-09-01",
+        "new_native_symbol": "NVDA-USD-PERP",
+        "source": "official_venue_notice",
+        "evidence_ref": "symbol-change-notice",
+    })
+    assert response.status_code == 201
+    event = response.json()
+    assert event["previous_native_market_id"] == event["new_native_market_id"] == "0x123"
+    assert event["previous_native_symbol"] == "NVDA-PERP"
+    assert event["new_native_symbol"] == "NVDA-USD-PERP"
+    assert client.get("/api/v1/registry/perpetual-contracts").json()[0]["native_symbol"] == "NVDA-PERP"
+
+
 def test_perpetual_contract_delisting_is_terminal_and_evidence_bearing(client):
     venue = client.post("/api/v1/registry/venues", json={
         "canonical_key": "venue:kraken", "display_name": "Kraken", "venue_type": "centralized_exchange"

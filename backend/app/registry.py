@@ -118,9 +118,14 @@ def list_perpetuals(db: Session = Depends(get_db)):
 def create_perpetual_migration(
     payload: schemas.PerpetualMigrationCreate, db: Session = Depends(get_db)
 ):
-    _require(db, models.PerpetualContract, payload.predecessor_contract_id, "Predecessor perpetual contract")
+    predecessor = _require(
+        db, models.PerpetualContract, payload.predecessor_contract_id, "Predecessor perpetual contract"
+    )
+    successor = None
     if payload.successor_contract_id is not None:
-        _require(db, models.PerpetualContract, payload.successor_contract_id, "Successor perpetual contract")
+        successor = _require(
+            db, models.PerpetualContract, payload.successor_contract_id, "Successor perpetual contract"
+        )
 
         # Migration edges are directed. Reject a new edge if the successor already
         # reaches the predecessor; otherwise historical lineage would become cyclic.
@@ -155,7 +160,28 @@ def create_perpetual_migration(
     )
     if duplicate:
         raise HTTPException(status_code=409, detail="This perpetual contract migration event is already registered.")
-    return _create(db, models.PerpetualContractMigration, payload)
+    event_data = payload.model_dump()
+    event_data["previous_native_market_id"] = predecessor.native_market_id
+    event_data["previous_native_symbol"] = predecessor.native_symbol
+    if payload.event_type == "symbol_changed":
+        event_data["new_native_market_id"] = predecessor.native_market_id
+        event_data["new_native_symbol"] = payload.new_native_symbol
+    elif successor is not None:
+        event_data["new_native_market_id"] = successor.native_market_id
+        event_data["new_native_symbol"] = successor.native_symbol
+    else:
+        event_data["new_native_market_id"] = None
+        event_data["new_native_symbol"] = None
+
+    record = models.PerpetualContractMigration(**event_data)
+    db.add(record)
+    try:
+        db.commit()
+        db.refresh(record)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Perpetual contract migration conflicts with an existing event.") from exc
+    return record
 
 
 @router.get("/perpetual-contract-migrations", response_model=list[schemas.PerpetualMigrationRead])

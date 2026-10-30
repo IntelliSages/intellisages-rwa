@@ -85,6 +85,7 @@ class PerpetualMigrationCreate(StrictModel):
         "replaced", "delisted", "expired"
     ]
     effective_at: date
+    new_native_symbol: str | None = Field(default=None, min_length=1, max_length=100)
     source: str = Field(min_length=1, max_length=120)
     evidence_ref: str = Field(min_length=1, max_length=500)
     notes: str | None = Field(default=None, max_length=1000)
@@ -95,8 +96,15 @@ class PerpetualMigrationCreate(StrictModel):
         terminal_event = self.event_type in {"delisted", "expired"}
         if terminal_event and self.successor_contract_id is not None:
             raise ValueError("Delisting and expiry events cannot have a successor contract.")
-        if not terminal_event and self.successor_contract_id is None:
+        if self.event_type == "symbol_changed":
+            if self.successor_contract_id is not None:
+                raise ValueError("A symbol-only change is recorded against one contract without a successor.")
+            if self.new_native_symbol is None:
+                raise ValueError("A symbol change requires the new native symbol.")
+        elif not terminal_event and self.successor_contract_id is None:
             raise ValueError("This migration event requires a successor contract.")
+        if self.event_type != "symbol_changed" and self.new_native_symbol is not None:
+            raise ValueError("new_native_symbol is only supplied for a symbol-only change.")
         if self.successor_contract_id == self.predecessor_contract_id:
             raise ValueError("A perpetual contract cannot migrate to itself.")
         return self

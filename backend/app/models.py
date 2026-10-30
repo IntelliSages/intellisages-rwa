@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 def new_id() -> str:
@@ -91,6 +91,10 @@ class PerpetualContractMigration(Base):
             "predecessor_contract_id", "successor_contract_id", "event_type", "effective_at",
             name="uq_perp_migration_edge_event_date",
         ),
+        CheckConstraint(
+            "successor_contract_id IS NULL OR predecessor_contract_id <> successor_contract_id",
+            name="ck_perp_migration_not_self",
+        ),
     )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     predecessor_contract_id: Mapped[str] = mapped_column(
@@ -101,6 +105,10 @@ class PerpetualContractMigration(Base):
     )
     event_type: Mapped[str] = mapped_column(String(30))
     effective_at: Mapped[date] = mapped_column(Date)
+    previous_native_market_id: Mapped[str] = mapped_column(String(180))
+    new_native_market_id: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    previous_native_symbol: Mapped[str] = mapped_column(String(100))
+    new_native_symbol: Mapped[str | None] = mapped_column(String(100), nullable=True)
     source: Mapped[str] = mapped_column(String(120))
     evidence_ref: Mapped[str] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
