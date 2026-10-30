@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -238,7 +238,6 @@ def get_tokenized_product(
         .where(models.IssuerProduct.id == product_id)
     ).first()
     if row is None:
-        from fastapi import HTTPException
         raise HTTPException(
             status_code=404,
             detail="RWA-classified issuer product not found for the requested date.",
