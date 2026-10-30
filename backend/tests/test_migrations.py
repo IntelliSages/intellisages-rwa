@@ -158,7 +158,8 @@ def test_provider_ingestion_run_migration_upgrades_and_downgrades(tmp_path, monk
 
 
 
-def test_postgres_fresh_database_uses_extended_alembic_version_table(tmp_path, monkeypatch):
+
+def test_postgres_fresh_schema_uses_extended_alembic_version_table(monkeypatch):
     import os
 
     import pytest
@@ -172,46 +173,46 @@ def test_postgres_fresh_database_uses_extended_alembic_version_table(tmp_path, m
         pytest.skip("TEST_POSTGRES_URL is not configured")
 
     url = make_url(database_url)
-    database_name = f"rwa_migration_{uuid.uuid4().hex[:10]}"
-    admin_url = url.set(database= "postgres")
-    app_url = url.set(database=database_name)
-    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
-    app_engine = None
+    schema_name = f"alembic_fresh_{uuid.uuid4().hex[:10]}"
+    engine = create_engine(database_url)
+    schema_engine = None
 
     try:
-        with admin_engine.connect() as connection:
-            connection.exec_driver_sql(f'CREATE DATABASE "{database_name}"')
+        with engine.connect() as connection:
+            connection.exec_driver_sql(f'CREATE SCHEMA "{schema_name}"')
+            connection.commit()
 
-        app_engine = create_engine(app_url)
+        schema_url = url.update_query_dict({"options": f"-csearch_path={schema_name},public"})
+        schema_engine = create_engine(schema_url)
         config = Config("alembic.ini")
-        monkeypatch.setenv("DATABASE_URL", str(app_url))
+        monkeypatch.setenv("DATABASE_URL", str(schema_url))
 
         command.upgrade(config, "head")
 
-        with app_engine.connect() as connection:
+        with schema_engine.connect() as connection:
             width = connection.execute(
                 text(
                     """
                     SELECT character_maximum_length
                     FROM information_schema.columns
-                    WHERE table_schema = current_schema()
+                    WHERE table_schema = :schema_name
                       AND table_name = 'alembic_version'
                       AND column_name = 'version_num'
                     """
-                )
+                ),
+                {"schema_name": schema_name},
             ).scalar_one()
             revision = connection.execute(
-                text("SELECT version_num FROM alembic_version")
+                text(f'SELECT version_num FROM "{schema_name}".alembic_version')
             ).scalar_one()
             assert width == ALEMBIC_VERSION_NUM_LENGTH
             assert revision == "0006_provider_ingestion_runs"
 
         command.downgrade(config, "base")
     finally:
-        if app_engine is not None:
-            app_engine.dispose()
-        with admin_engine.connect() as connection:
-            connection.exec_driver_sql(
-                f' DROP DATABASE IF EXISTS "{database_name}" WITH (FORCE)'
-            )
-        admin_engine.dispose()
+        if schema_engine is not None:
+            schema_engine.dispose()
+        with engine.connect() as connection:
+            connection.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
+            connection.commit()
+        engine.dispose()
