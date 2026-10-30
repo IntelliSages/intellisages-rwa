@@ -52,3 +52,19 @@ The API does not infer legal ownership, backing, redemption rights, bridge equiv
 - Exact alias resolution: GET /api/v1/registry/aliases/resolve?provider=...&namespace=...&external_id=...&as_of=YYYY-MM-DD
 
 This increment deliberately omits general update/delete endpoints, provider ingestion, public registration, authentication and market metrics. The close-period endpoint is the sole controlled temporal correction for aliases. Registry mutations are administrative and must be protected before any shared environment is exposed.
+
+## Read-only tokenized product catalogue
+
+`GET /api/v1/catalogue/tokenized-products` returns issuer products with an effective RWA classification, canonical underlying and issuer identity, and product-specific deployment records.
+
+Supported query parameters: `q`, `issuer_id`, `network_id`, `sort` (`underlying|issuer|product`), `direction` (`asc|desc`), `limit` (1–100), `offset` and optional `as_of` date.
+
+Important semantics:
+- One result row represents one issuer product, not one network deployment.
+- Network filters match only product-specific deployments marked verified.
+- Unverified deployments remain visible in product detail but do not satisfy a network filter.
+- Classification source, evidence reference and effective period are returned.
+- The response explicitly marks provider-universe coverage as unknown. `total` counts matching registry records only.
+- Price, tokenized value, supply, volume, liquidity and return history are not included because validated observation services do not yet exist.
+
+This is a read-only catalogue route, not permission to expose the current unauthenticated registry mutation routes publicly.

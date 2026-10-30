@@ -98,7 +98,7 @@ Branch `feat/effective-dated-provider-aliases` adds effective start/end dates to
 Final implementation commit `626ea47bc3de761a893a06bef73b2c79247c31a3` passed push run `40986565711` and PR run `40986712177`. Backend: Ruff passed, 22 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. PR #4 is merged at `28ac009c88c9062657a422d01f80e83b91188456`.
 
 
-## 10. Perpetual contract migration history — implementation in progress
+## 10. Perpetual contract migration history — merged in PR #5
 
 Branch: `feat/perpetual-contract-migration-history`.
 
@@ -106,11 +106,11 @@ The current increment adds evidence-bearing migration events with predecessor/su
 
 The event date is a calendar date. Intraday cutover precision, observation-to-contract lineage, contract lifecycle effective periods and source reconciliation remain outside this increment. Migration evidence is required and verification defaults to false.
 
-Initial implementation validation on commit `8289736fe72924855c16d47be4fd3401d0613355`: GitHub Actions push run `40988066268` passed both quality jobs. Backend: Ruff passed, 28 tests passed, Alembic upgrade/downgrade passed. Frontend: dependency install, ESLint, TypeScript and production build passed. The final documentation commit must be revalidated before PR creation.
+PR #5 merged at `10349dec896de876fcb3ffb697345943a5fbefe3`. Final push run `40988240946` and PR run `40988381700` passed; backend Ruff, 28 tests, Alembic upgrade/downgrade and frontend dependency install, ESLint, TypeScript and production build passed.
 
 ## 10. Frontend Sprint 1 — Home and Crypto Screener
 
-A first product-facing frontend increment is being implemented on `feat/frontend-home-crypto-screener`.
+Merged in PR #6 at `b9540bd599f681a31448d1dd0f35390ed8d49dd7`.
 
 Scope:
 - Home includes separate Trending Crypto and Trending Tokenized Assets workspaces alongside headline metric cards, provider coverage, discovery links and the approved 16-page directory.
@@ -122,4 +122,12 @@ This increment does not complete all sixteen detailed page workspaces or connect
 
 ## 11. Product-page workspace design
 
-The current frontend branch also replaces the generic readiness-only route content with page-specific workspace configurations for the remaining approved surfaces. Each page receives its own metric labels, table columns, filter dimensions and interpretation note. Trader Intelligence and Event Feed remain explicitly reserved; their metrics are not activated before their specifications are approved. All data tables remain empty/unavailable until supported read APIs provide validated records.
+PR #6 also replaced the generic readiness-only route content with page-specific workspace configurations for the remaining approved surfaces. Each page receives its own metric labels, table columns, filter dimensions and interpretation note. Trader Intelligence and Event Feed remain explicitly reserved; their metrics are not activated before their specifications are approved. All data tables remain empty/unavailable until supported read APIs provide validated records.
+
+## 12. Tokenized RWA Screener and catalogue read API
+
+Implementation branch: `feat/tokenized-rwa-screener`.
+
+This increment adds a dedicated Tokenized RWA Screener page, shared availability/provenance components, a same-origin Next.js API proxy, and a read-only FastAPI catalogue endpoint. The endpoint returns effective RWA-classified registry products once each, joins underlying and issuer identity, exposes classification evidence, lists product-level deployment records and applies network filters only to verified deployments. Registry counts are explicitly not represented as provider-complete universe coverage. Market metrics remain unavailable because no validated observations are connected.
+
+Frontend automated tests cover shared status/provenance disclosures, product identity display, deployment expansion, verified-network filter requests and API-not-configured state. Backend tests cover product distinctness, effective classification, verified-network filtering, search, facets, pagination and input validation. This increment must pass final push and PR quality workflows before it is marked ready for review.

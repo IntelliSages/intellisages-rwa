@@ -22,7 +22,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 
 - [x] Define canonical entities/IDs for underlying, issuer, issuer product, network, deployment, venue, perp contract and provider alias.
 - [x] Add effective-dated provider aliases and exact symbol/name namespaces.
-- [~] Add evidence-bearing perpetual contract migration events with predecessor/successor links and terminal delisting/expiry events.
+- [x] Add evidence-bearing perpetual contract migration events with predecessor/successor links and terminal delisting/expiry events.
 - [~] Add representation type: independent issuance, bridge/wrapper or unknown.
 - [~] Add effective-dated economic-supply groups/memberships with evidence references and explicit verification.
 - [~] Add versioned underlying/product classification and provider-global inclusion evidence.
@@ -32,7 +32,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 - [~] Verify deployment per product; the API requires an explicit product + network deployment and does not infer issuer-wide support.
 - [x] Ensure unknown IDs return not found, never a default asset.
 
-**Current baseline:** PRs #2, #3 and #4 are merged. PR #4 adds effective-dated provider alias history. Perpetual contract migration history is in the current feature branch; spot/pool/loan-market identities, bulk reconciliation and access controls remain open.
+**Current baseline:** PRs #2–#6 are merged. PR #5 adds perpetual contract migration history. Spot/pool/loan-market identities, bulk reconciliation and access controls remain open.
 
 ## EPIC 2 — Provider adapters, rights and ingestion
 
@@ -134,7 +134,7 @@ Legend: [ ] not started · [~] in progress · [x] completed with evidence · [!]
 
 ## EPIC 10 — Shared frontend, all 16 pages, QA and launch
 
-- [ ] Build reusable identity navigation and data provenance/status components.
+- [x] Build reusable identity navigation and data provenance/status components.
 - [ ] Build reusable metric cards, tables, charts, filters, sorting and CSV export.
 - [ ] Implement loading, empty, unavailable, partial, stale, blocked and error states.
 - [ ] Implement responsive and keyboard-accessible controls.
@@ -171,3 +171,19 @@ A task is done only when code is merged, tests are executed, evidence is recorde
 
 - [x] Give the remaining approved pages page-specific workspace structure, metric labels, table columns, filter dimensions and interpretation guidance.
 - [x] Keep Trader Intelligence and Event Feed reserved pending their joint specifications.
+
+## FRONTEND SPRINT 2 — Tokenized RWA Screener
+
+- [x] Add a dedicated Tokenized RWA Screener route and responsive product catalogue table.
+- [x] Add shared availability, metric-unavailable and evidence/provenance components.
+- [x] Add a same-origin Next.js API proxy using server-only `RWA_API_BASE_URL`.
+- [x] Add read-only catalogue API for effective RWA-classified issuer products.
+- [x] Preserve one row per issuer product across multiple deployments.
+- [x] Restrict network filtering to verified product-level deployments.
+- [x] Expose issuer facets, verified-network facets, stable sorting and pagination.
+- [x] Disclose that registry record counts are not provider-complete market coverage.
+- [x] Keep price, tokenized value, volume, liquidity, performance and perp availability unavailable until validated observation services exist.
+- [ ] Pass backend Ruff, pytest and Alembic upgrade/downgrade on final commit.
+- [ ] Pass frontend dependency install, ESLint, TypeScript, unit tests and Next.js production build on final commit.
+- [ ] Pass both push and pull-request workflows on the exact final commit before marking the PR ready.
+- [ ] Connect a protected/shared backend deployment and validate live catalogue requests after access-control review.

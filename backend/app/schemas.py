@@ -188,3 +188,68 @@ class ClassificationCreate(StrictModel):
         return self
 class ClassificationRead(ClassificationCreate):
     id: str
+
+
+class CatalogueIssuerRead(BaseModel):
+    id: str
+    legal_name: str
+
+class CatalogueUnderlyingRead(BaseModel):
+    id: str
+    display_name: str
+    asset_type: str
+
+class CatalogueNetworkRead(BaseModel):
+    id: str
+    namespace: str
+    display_name: str
+    family: str
+
+class CatalogueDeploymentRead(BaseModel):
+    id: str
+    network: CatalogueNetworkRead
+    native_identifier: str
+    representation_type: RepresentationType
+    is_verified: bool
+
+class CatalogueClassificationRead(BaseModel):
+    classification: Literal["rwa"]
+    effective_from: date
+    effective_to: date | None
+    source: str
+    evidence_ref: str
+    provider_global_included: bool | None
+
+class TokenizedProductCatalogueItem(BaseModel):
+    id: str
+    canonical_key: str
+    native_product_id: str
+    display_name: str
+    symbol: str | None
+    instrument_form: str
+    unit_description: str
+    representation_type: RepresentationType
+    issuer: CatalogueIssuerRead
+    underlying: CatalogueUnderlyingRead
+    classification: CatalogueClassificationRead
+    deployments: list[CatalogueDeploymentRead]
+    unverified_deployment_count: int
+
+class CatalogueFacet(BaseModel):
+    id: str
+    label: str
+
+class CatalogueCoverage(BaseModel):
+    status: Literal["unknown"]
+    scope: str
+    note: str
+
+class TokenizedProductCatalogueResponse(BaseModel):
+    as_of: date
+    items: list[TokenizedProductCatalogueItem]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
+    facets: dict[str, list[CatalogueFacet]]
+    coverage: CatalogueCoverage

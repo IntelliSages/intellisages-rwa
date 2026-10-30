@@ -1,6 +1,6 @@
 # Canonical Identity Registry — Implementation Notes
 
-**Status:** canonical identity foundation, economic-supply/classification extension and effective-dated provider alias history are merged in PRs #2–#4. Perpetual contract migration history is implemented on the current feature branch; its initial push CI passed on commit `8289736fe72924855c16d47be4fd3401d0613355`, with final documentation-commit and PR validation pending.
+**Status:** canonical identity foundation, economic-supply/classification extension, effective-dated provider aliases and perpetual contract migration history are merged in PRs #2–#5.
 **Governing source:** MVP_IMPLEMENTATION_BLUEPRINT.md and DATA_IDENTITY_AND_AGGREGATION.md.
 
 ## Scope delivered
@@ -74,6 +74,10 @@ SQLAlchemy 2.x models target PostgreSQL for shared environments. Alembic migrati
 - PR #3 merged at `85558c8bf95c28f3b78dddcee00549e37c4b4160`: economic-supply groups, evidence-bearing memberships and versioned classifications. Both frontend/backend quality gates passed on the PR head.
 - PR #4 merged at `28ac009c88c9062657a422d01f80e83b91188456`. Final implementation commit `626ea47bc3de761a893a06bef73b2c79247c31a3` passed push run `40986565711` and PR run `40986712177`; backend Ruff, 22 tests, Alembic upgrade/downgrade and frontend dependency install, ESLint, TypeScript and production build passed.
 - Perpetual contract migration history initial implementation validation: push run `40988066268` passed on commit `8289736fe72924855c16d47be4fd3401d0613355`. Backend Ruff passed; 28 tests passed; Alembic upgrade/downgrade passed. Frontend dependency install, ESLint, TypeScript and production build passed. Final documentation-commit and PR-triggered runs remain required.
+
+## Read-only tokenized product catalogue
+
+A read-only `GET /api/v1/catalogue/tokenized-products` service now joins currently effective RWA-classified issuer products to their canonical issuer, underlying and product-level deployments. It returns each issuer product once, exposes classification evidence and marks registry coverage as unknown rather than implying a provider-complete universe. Network filtering is based only on verified product deployments. It does not supply market observations.
 
 ## Explicitly not delivered
 
