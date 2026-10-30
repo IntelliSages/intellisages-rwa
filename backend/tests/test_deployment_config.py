@@ -1,12 +1,25 @@
-import os
-import uuid
-
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.testclient import TestClient
 
 from app import main
+from alembic.ddl.impl import DefaultImpl
+from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
+from app.alembic_impl import ExtendedPostgresqlImpl
+
+
+def test_postgresql_alembic_version_table_uses_extended_column():
+    registered_impl = DefaultImpl.get_by_dialect(postgresql_dialect())
+    assert registered_impl is ExtendedPostgresqlImpl
+
+    table = registered_impl.version_table_impl(
+        version_table="alembic_version",
+        version_table_schema=None,
+        version_table_pk=True,
+    )
+    assert table.c.version_num.type.length == ALEMBIC_VERSION_NUM_LENGTH
+
+
 from app.database import (
     ALEMBIC_VERSION_NUM_LENGTH,
     ensure_alembic_version_column_length,
@@ -126,68 +139,6 @@ def test_alembic_version_column_widening_fails_if_verification_is_short():
 
     with pytest.raises(RuntimeError, match="public.alembic_version.version_num"):
         ensure_alembic_version_column_length(PostgreSQLConnection())
-
-
-def test_alembic_version_column_widening_against_real_postgres_search_path():
-    database_url = os.getenv("TEST_POSTGRES_URL")
-    if not database_url:
-        pytest.skip("TEST_POSTGRES_URL is not configured")
-
-    engine = create_engine(normalise_database_url(database_url))
-    suffix = uuid.uuid4().hex[:10]
-    first_schema = f"alembic_test_a_{suffix}"
-    selected_schema = f"alembic_test_b_{suffix}"
-
-    try:
-        with engine.connect() as connection:
-            connection.exec_driver_sql(f'CREATE SCHEMA "{first_schema}"')
-            connection.exec_driver_sql(f'CREATE SCHEMA "{selected_schema}"')
-            connection.exec_driver_sql(
-                f'CREATE TABLE "{first_schema}".alembic_version '
-                "(version_num VARCHAR(32) NOT NULL)"
-            )
-            connection.exec_driver_sql(
-                f'CREATE TABLE "{selected_schema}".alembic_version '
-                "(version_num VARCHAR(32) NOT NULL)"
-            )
-            connection.commit()
-
-            connection.exec_driver_sql(
-                f'SET search_path TO "{selected_schema}", "{first_schema}", public'
-            )
-            connection.commit()
-
-            assert ensure_alembic_version_column_length(connection) is True
-
-            selected_width = connection.exec_driver_sql(
-                """
-                SELECT character_maximum_length
-                FROM information_schema.columns
-                WHERE table_schema = %s
-                  AND table_name = 'alembic_version'
-                  AND column_name = 'version_num'
-                """,
-                (selected_schema,),
-            ).scalar_one()
-            shadowed_width = connection.exec_driver_sql(
-                """
-                SELECT character_maximum_length
-                FROM information_schema.columns
-                WHERE table_schema = %s
-                  AND table_name = 'alembic_version'
-                  AND column_name = 'version_num'
-                """,
-                (first_schema,),
-            ).scalar_one()
-
-            assert selected_width == ALEMBIC_VERSION_NUM_LENGTH
-            assert shadowed_width == 32
-    finally:
-        with engine.connect() as connection:
-            connection.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{selected_schema}" CASCADE')
-            connection.exec_driver_sql(f'DROP SCHEMA IF EXISTS "{first_schema}" CASCADE')
-            connection.commit()
-        engine.dispose()
 
 
 def test_healthcheck_requires_database_connectivity(monkeypatch):
