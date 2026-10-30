@@ -56,10 +56,13 @@ def _candidate(db: Session, record: models.RegistryImportRecord, entity_type: st
     if candidate is None:
         db.add(models.RegistryImportCandidate(import_record_id=record.id, candidate_entity_type=entity_type,
             candidate_entity_id=entity_id, match_basis=basis, confidence=confidence, evidence_ref=evidence_ref))
-    elif confidence > candidate.confidence:
-        candidate.match_basis = basis
-        candidate.confidence = confidence
-        candidate.evidence_ref = evidence_ref
+    else:
+        bases = set(candidate.match_basis.split("|"))
+        bases.add(basis)
+        candidate.match_basis = "|".join(sorted(bases))
+        candidate.confidence = max(candidate.confidence, confidence)
+        if evidence_ref:
+            candidate.evidence_ref = evidence_ref
 
 
 def _normalise_deployment_payload(db: Session, payload: dict[str, Any]) -> str:

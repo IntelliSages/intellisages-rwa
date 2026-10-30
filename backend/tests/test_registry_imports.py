@@ -47,7 +47,7 @@ def test_exact_canonical_key_is_candidate_not_auto_approved(client):
     }, "asset-id")]).json()
     record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
     assert record["status"] == "needs_review"
-    assert record["candidates"][0]["match_basis"] == "exact_canonical_key"
+    assert "exact_canonical_key" in record["candidates"][0]["match_basis"]
     assert record["resolved_entity_id"] is None
 
 
@@ -175,7 +175,7 @@ def test_exact_unverified_provider_alias_requires_human_approval_and_is_promoted
     }, "asset-id")]).json()
     record = client.get(f"/api/v1/registry/imports/{batch['id']}").json()["records"][0]
     assert record["status"] == "needs_review"
-    assert record["candidates"][0]["match_basis"] == "exact_provider_alias_unverified"
+    assert any("exact_provider_alias_unverified" in c["match_basis"] for c in record["candidates"])
     decision = client.post(f"/api/v1/registry/imports/records/{record['id']}/decision", json={
         "action": "link_existing", "reviewer": "reviewer", "target_entity_id": underlying["id"],
         "evidence_ref": "https://issuer.example/asset-identity"})
