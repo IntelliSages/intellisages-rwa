@@ -155,7 +155,7 @@ describe("Tokenized RWA screener", () => {
 
     render(<TokenizedRwaScreener />);
 
-    expect(await screen.findByText("NVIDIA")).toBeInTheDocument();
+    expect((await screen.findAllByText("NVIDIA")).length).toBeGreaterThanOrEqual(2);
     expect(await screen.findByText("190")).toBeInTheDocument();
     expect(screen.getByText("1.25%")).toBeInTheDocument();
     expect(screen.getByText("Partial provider coverage")).toBeInTheDocument();
