@@ -159,7 +159,11 @@ describe("Tokenized RWA screener", () => {
     expect(await screen.findByText("190")).toBeInTheDocument();
     expect(screen.getByText("1.25%")).toBeInTheDocument();
     expect(screen.getByText("Partial provider coverage")).toBeInTheDocument();
-    expect(screen.getByText("1 observations available · 1 fresh · 0 stale")).toBeInTheDocument();
+    const observationSummary = screen.getByText((_, element) =>
+      element?.tagName.toLowerCase() === "span" &&
+      element.textContent?.replace(/\\s+/g, " ").trim() === "1 observations available · 1 fresh · 0 stale",
+    );
+    expect(observationSummary).toBeInTheDocument();
   });
 
   it("shows an explicit configuration state when the API proxy is not configured", async () => {
