@@ -1,0 +1,33 @@
+name: Scheduled CoinGecko RWA market refresh
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coingecko-rwa-market-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh CoinGecko RWA market snapshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate required secrets
+        env:
+          API_BASE: ${{ secrets.RWA_API_BASE_URL }}
+          REFRESH_TOKEN: ${{ secrets.COINGECKO_REFRESH_ADMIN_TOKEN }}
+        run: |
+          test -n "$API_BASE" || { echo "Missing RWA_API_BASE_URL repository secret"; exit 1; }
+          test -n "$REFRESH_TOKEN" || { echo "Missing COINGECKO_REFRESH_ADMIN_TOKEN repository secret"; exit 1; }
+      - name: Trigger backend refresh
+        env:
+          API_BASE: ${{ secrets.RWA_API_BASE_URL }}
+          REFRESH_TOKEN: ${{ secrets.COINGECKO_REFRESH_ADMIN_TOKEN }}
+        run: |
+          curl --fail-with-body --silent --show-error             --max-time 540             --request POST             --header "X-CoinGecko-Refresh-Token: $REFRESH_TOKEN"             --header "Accept: application/json"             "$API_BASE/api/v1/market-data/coingecko/rwa/refresh"

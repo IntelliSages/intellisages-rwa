@@ -1,7 +1,7 @@
 # RWAs Intelligence — Progress and Decision Log
 
 **Last updated:** 2026-10-30  
-**Status:** PR #7 is merged. The Home dashboard, Crypto Screener, page-specific workspaces and Tokenized RWA Screener/catalogue API are in `main`. Sprint 3 product-detail navigation and exact product lookup are in progress on `feat/rwa-product-detail-navigation`; validation and PR review remain pending.
+**Status:** PR #21 is merged. CoinGecko RWA market-data integration is implemented on `feat/coingecko-live-rwa-market-data`; backend/frontend CI and deployment validation are pending.
 
 ## 1. Verified implementation evidence
 
@@ -249,3 +249,20 @@ Application commit: \`175122bef842135e8b45b7cdecedd2f46a7bebc0\`.
 - Frontend ESLint, TypeScript, Vitest and Next.js production build: passed.
 - Vercel Preview Comments: passed.
 - PR #10 remains open and draft. No live CoinGecko snapshot or canonical records have been staged. Live pilot execution requires the operator's CoinGecko API key, a running registry API and its server-side \`REGISTRY_ADMIN_TOKEN\`.
+
+
+## CoinGecko RWA market-data integration — implementation branch
+
+Branch: `feat/coingecko-live-rwa-market-data`.
+
+Implemented in this branch:
+- Separate refresh-run, immutable raw-response and normalized RWA market-observation persistence, with migration `0007_coingecko_rwa_market_data`.
+- CoinGecko `/rwas/list` universe check and paginated `/rwas/markets` ingestion (up to 250 rows/page), preserving raw page payloads, hashes and retrieval times.
+- Complete/partial/failed run status and explicit missing/duplicate coverage; previous observations are retained.
+- Public market-data read API plus controlled server-side refresh endpoint protected by `COINGECKO_REFRESH_ADMIN_TOKEN`.
+- Separate persistent single-instance refresh worker; it is not started inside API replicas.
+- Frontend same-origin proxy and screener snapshot panel. Market metrics are attached only through independently verified CoinGecko `rwa_id` aliases to canonical underlyings. Aggregated underlying metrics are labelled as such and are not presented as issuer-product metrics.
+- Explicit 15-minute freshness status. Liquidity and historical charts remain unavailable because their endpoints require separate paid-plan access and are not implemented here.
+- Unit/integration tests for normalization, raw persistence, complete pagination and partial coverage.
+
+**Not yet verified:** backend tests, lint, PostgreSQL migration upgrade/downgrade, frontend lint/typecheck/tests/build, CI result, CoinGecko credential entitlement, backend/worker deployment, and a live refresh. Do not mark this increment complete until those checks have evidence.

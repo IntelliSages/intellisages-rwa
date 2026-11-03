@@ -57,9 +57,12 @@ function catalogue(): TokenizedProductCatalogueResponse {
 
 describe("Tokenized RWA screener", () => {
   it("renders canonical product identity once and discloses missing market metrics", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => catalogue(),
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -76,9 +79,12 @@ describe("Tokenized RWA screener", () => {
   });
 
   it("expands product details and reveals classification evidence", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => catalogue(),
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
     }));
 
     render(<TokenizedRwaScreener />);
@@ -93,9 +99,12 @@ describe("Tokenized RWA screener", () => {
   });
 
   it("uses the selected verified network as an API filter", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => catalogue(),
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -110,6 +119,51 @@ describe("Tokenized RWA screener", () => {
         expect.objectContaining({ headers: { accept: "application/json" } }),
       );
     });
+  });
+
+  it("renders provider market observations without canonical identity approval", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "partial",
+            run: { completed_at: "2026-10-30T22:30:42.246440" },
+            coverage: { complete: false },
+            items: [{
+              provider_rwa_id: "nvidia",
+              name: "NVIDIA",
+              symbol: "nvda",
+              asset_type: "stock",
+              current_price_usd: 190,
+              market_cap_usd: 1000000,
+              total_volume_24h_usd: 2000,
+              price_change_24h_pct: 1.25,
+              price_change_7d_pct: 2.5,
+              provider_updated_at: "2026-10-30T22:29:00",
+              retrieved_at: "2026-10-30T22:30:00",
+              freshness: "available",
+              source: "CoinGecko RWA Markets API",
+              scope: "aggregate tokenized underlying market",
+            }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
+    }));
+
+    render(<TokenizedRwaScreener />);
+
+    expect((await screen.findAllByText("NVIDIA")).length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findByText("190")).toBeInTheDocument();
+    expect(screen.getByText("1.25%")).toBeInTheDocument();
+    expect(screen.getByText("Partial provider coverage")).toBeInTheDocument();
+    const observationSummary = screen.getByText((_, element) =>
+      element?.tagName.toLowerCase() === "span" &&
+      element.textContent?.replace(/\\s+/g, " ").trim() === "1 observations available · 1 fresh · 0 stale",
+    );
+    expect(observationSummary).toBeInTheDocument();
   });
 
   it("shows an explicit configuration state when the API proxy is not configured", async () => {

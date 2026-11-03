@@ -239,3 +239,57 @@ class ProviderIngestionRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+class ProviderRefreshRun(Base):
+    __tablename__ = "provider_refresh_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    provider: Mapped[str] = mapped_column(String(100), index=True)
+    dataset: Mapped[str] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    coverage_json: Mapped[str] = mapped_column(Text, default="{}")
+    error_summary: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class ProviderRawResponse(Base):
+    __tablename__ = "provider_raw_responses"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_refresh_runs.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(100), index=True)
+    endpoint: Mapped[str] = mapped_column(String(300))
+    page: Mapped[int] = mapped_column(Integer)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    response_sha256: Mapped[str] = mapped_column(String(64))
+    response_json: Mapped[str] = mapped_column(Text)
+    record_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CoinGeckoRwaMarketObservation(Base):
+    __tablename__ = "coingecko_rwa_market_observations"
+    __table_args__ = (
+        UniqueConstraint("run_id", "provider_rwa_id", name="uq_cg_rwa_observation_run_id"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_refresh_runs.id", ondelete="CASCADE"), index=True
+    )
+    raw_response_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_raw_responses.id", ondelete="RESTRICT"), index=True
+    )
+    provider_rwa_id: Mapped[str] = mapped_column(String(220), index=True)
+    name: Mapped[str] = mapped_column(String(240))
+    symbol: Mapped[str] = mapped_column(String(80))
+    asset_type: Mapped[str] = mapped_column(String(40))
+    current_price_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    market_cap_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_volume_24h_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_change_24h_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_change_7d_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    provider_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
