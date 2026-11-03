@@ -18,16 +18,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Validate required secrets
+      - name: Validate required configuration
         env:
-          API_BASE: ${{ secrets.RWA_API_BASE_URL }}
+          # API base URL is public configuration, not a secret. Allow a repository
+          # variable override, but default to the Render production API.
+          API_BASE: ${{ vars.RWA_API_BASE_URL || 'https://intellisages-rwa-api.onrender.com' }}
           REFRESH_TOKEN: ${{ secrets.COINGECKO_REFRESH_ADMIN_TOKEN }}
         run: |
-          test -n "$API_BASE" || { echo "Missing RWA_API_BASE_URL repository secret"; exit 1; }
+          test -n "$API_BASE" || { echo "Missing RWA_API_BASE_URL configuration"; exit 1; }
           test -n "$REFRESH_TOKEN" || { echo "Missing COINGECKO_REFRESH_ADMIN_TOKEN repository secret"; exit 1; }
+          echo "Backend target: $API_BASE"
       - name: Trigger backend refresh
         env:
-          API_BASE: ${{ secrets.RWA_API_BASE_URL }}
+          API_BASE: ${{ vars.RWA_API_BASE_URL || 'https://intellisages-rwa-api.onrender.com' }}
           REFRESH_TOKEN: ${{ secrets.COINGECKO_REFRESH_ADMIN_TOKEN }}
         run: |
-          curl --fail-with-body --silent --show-error             --max-time 540             --request POST             --header "X-CoinGecko-Refresh-Token: $REFRESH_TOKEN"             --header "Accept: application/json"             "$API_BASE/api/v1/market-data/coingecko/rwa/refresh"
+          curl --fail-with-body --silent --show-error \
+            --max-time 540 \
+            --request POST \
+            --header "X-CoinGecko-Refresh-Token: $REFRESH_TOKEN" \
+            --header "Accept: application/json" \
+            "$API_BASE/api/v1/market-data/coingecko/rwa/refresh"
