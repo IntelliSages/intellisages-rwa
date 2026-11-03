@@ -14,7 +14,7 @@ const PAGE_SIZE = 25;
 type ApiError = { code: string; message: string; unavailable: boolean };
 type ProviderMarketObservation = {
   provider_rwa_id: string;
-  asset_type: string;
+  asset_type?: string | null;
   name: string;
   symbol: string;
   current_price_usd: number | null;
@@ -170,7 +170,7 @@ export function TokenizedRwaScreener() {
       item.name.toLowerCase().includes(query) ||
       item.symbol.toLowerCase().includes(query) ||
       item.provider_rwa_id.toLowerCase().includes(query) ||
-      item.asset_type.toLowerCase().includes(query)
+      (item.asset_type ?? "other").toLowerCase().includes(query)
     );
   }, [marketData, marketSearch]);
 
