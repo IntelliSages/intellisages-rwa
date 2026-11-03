@@ -57,7 +57,13 @@ function catalogue(): TokenizedProductCatalogueResponse {
 
 describe("Tokenized RWA screener", () => {
   it("renders canonical product identity once and discloses missing market metrics", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
+    });
       ok: true,
       json: async () => catalogue(),
     });
@@ -76,9 +82,12 @@ describe("Tokenized RWA screener", () => {
   });
 
   it("expands product details and reveals classification evidence", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => catalogue(),
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
     }));
 
     render(<TokenizedRwaScreener />);
