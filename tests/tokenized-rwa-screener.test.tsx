@@ -64,9 +64,6 @@ describe("Tokenized RWA screener", () => {
       }
       return Promise.resolve({ ok: true, json: async () => catalogue() });
     });
-      ok: true,
-      json: async () => catalogue(),
-    });
     vi.stubGlobal("fetch", fetchMock);
 
     render(<TokenizedRwaScreener />);
@@ -102,9 +99,12 @@ describe("Tokenized RWA screener", () => {
   });
 
   it("uses the selected verified network as an API filter", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => catalogue(),
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
     });
     vi.stubGlobal("fetch", fetchMock);
 
