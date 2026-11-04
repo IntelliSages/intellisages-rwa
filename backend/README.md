@@ -206,6 +206,44 @@ A run is only marked completed when the full provider list was requested, every 
 
 The importer only stages records. It never creates or verifies canonical entities automatically. All canonical records and provider aliases continue through human approval with evidence. A CoinGecko-reported issuer name must not be presented as a verified legal entity without independent evidence.
 
+### Operator review CLI
+
+A small CLI wraps the queue and decision endpoints so reviewers do not hand-write HTTP requests:
+
+```bash
+# List what is awaiting review (optionally filtered or exported for offline review)
+python -m app.providers.coingecko_review queue
+python -m app.providers.coingecko_review queue --entity-type issuer --limit 500
+python -m app.providers.coingecko_review queue --export review-queue.json
+
+# Post a single decision
+python -m app.providers.coingecko_review decide <record-id> \
+  --action create_new --reviewer 'you@example.com' \
+  --evidence-ref 'https://evidence.example/dossier/1' \
+  --override legal-name-override.json
+
+# Bulk-apply decisions from a file (always dry-run first)
+python -m app.providers.coingecko_review apply decisions.json --dry-run
+python -m app.providers.coingecko_review apply decisions.json
+```
+
+It reads `RWA_API_BASE_URL` and `REGISTRY_ADMIN_TOKEN` from the environment (or `--base-url` / `--admin-token`). The same evidence rules are enforced both client- and server-side: `link_existing` requires `evidence_ref` and `target_entity_id`; `create_new` requires `evidence_ref` (issuer `create_new` also requires a `canonical_payload_override.legal_name`); `reject` requires a `note`. No approval is accepted without an evidence reference.
+
+A decisions file is either a bare list or an object with a `reviewer` default and a `decisions` list:
+
+```json
+{
+  "reviewer": "you@example.com",
+  "decisions": [
+    {"record_id": "…", "action": "create_new", "evidence_ref": "https://evidence.example/1",
+     "canonical_payload_override": {"legal_name": "Independent Legal Name"}},
+    {"record_id": "…", "action": "link_existing", "evidence_ref": "https://evidence.example/2",
+     "target_entity_id": "<canonical-id>"},
+    {"record_id": "…", "action": "reject", "note": "Not an RWA / duplicate source"}
+  ]
+}
+```
+
 ## CoinGecko RWA market-data refresh
 
 The discovery importer above stages identity records for human review. Market snapshots use a separate ingestion path and do not create, approve, or relabel canonical entities.
