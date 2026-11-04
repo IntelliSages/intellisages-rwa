@@ -6,11 +6,13 @@
       "record_id": "7ae79df2-f8c7-4d7e-96d4-53295c291d03",
       "external_id": "anchored-ecosystem",
       "provider_name": "Anchored Capital Ltd (BVI)",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Anchored Capital Ltd (BVI)"
+      }
     },
     {
       "record_id": "25fc1de4-52d5-4f13-9a7d-29273845b0e4",
@@ -26,21 +28,25 @@
       "record_id": "1bc2afd4-ebfc-4c7d-b06e-b2b246ffce85",
       "external_id": "bstocks-ecosystem",
       "provider_name": "BTech Holdings Limited",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "BTech Holdings Limited"
+      }
     },
     {
       "record_id": "d0101d63-a098-4099-85bf-1021dc94bef4",
       "external_id": "coinbase-ecosystem",
       "provider_name": "Coinbase",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Coinbase, Inc."
+      }
     },
     {
       "record_id": "f875c84f-a69b-4f5c-95d1-9fb705dec3f4",
@@ -56,31 +62,37 @@
       "record_id": "17f647be-0926-4bba-a798-0357dd5a4632",
       "external_id": "dinari-ecosystem",
       "provider_name": "Dinari",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Dinari, Inc."
+      }
     },
     {
       "record_id": "a116b660-2cf7-418b-bcd1-7eef59275e6e",
       "external_id": "figure-markets-ecosystem",
       "provider_name": "Figure Technology Solutions, Inc.",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Figure Markets, Inc."
+      }
     },
     {
       "record_id": "20e52408-c70a-4b9b-b220-9e75a825f470",
       "external_id": "gate-ecosystem",
       "provider_name": "Gate",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Gate Technology Limited"
+      }
     },
     {
       "record_id": "6e01bbfc-488c-4598-97b9-8ff4886353c0",
@@ -96,21 +108,25 @@
       "record_id": "87ff96e0-5232-4d77-ba52-694ee257b87f",
       "external_id": "japaul-ltd-ecosystem",
       "provider_name": "Japaul",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "JaPaul Ltd"
+      }
     },
     {
       "record_id": "837d58d8-69a6-4b7c-86a4-7c7f7978d120",
       "external_id": "kinesis-ecosystem",
       "provider_name": "Kinesis Money",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Kinesis Money AG"
+      }
     },
     {
       "record_id": "eb10e6e1-fbad-432b-a5f7-5300af4c15aa",
@@ -146,31 +162,37 @@
       "record_id": "08ca66ae-9ec2-4008-a650-4552fcba3e32",
       "external_id": "mks-pamp-ecosystem",
       "provider_name": "MKS PAMP",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "MKS PAMP SA"
+      }
     },
     {
       "record_id": "b0d21c1a-bfd5-4ff7-84ef-2aa5a94673c9",
       "external_id": "ondo-tokenized-assets",
       "provider_name": "Ondo Finance",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Ondo Finance, Inc."
+      }
     },
     {
       "record_id": "316c0de9-952c-4341-a84a-6fff6b731ccd",
       "external_id": "paxos-ecosystem",
       "provider_name": "Paxos Global",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Paxos Trust Company, LLC"
+      }
     },
     {
       "record_id": "044f6930-a1fe-4a32-8031-14021ddb9a8d",
@@ -226,21 +248,25 @@
       "record_id": "6a042695-9b30-44c1-a334-aa6e59fbbc41",
       "external_id": "robinhood-chain-stocks-ecosystem",
       "provider_name": "Robinhood Assets (Jersey) Limited",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Robinhood Markets, Inc."
+      }
     },
     {
       "record_id": "8aa422bf-b02b-4804-993a-8aac85ef0e5d",
       "external_id": "securitize-ecosystem",
       "provider_name": "Securitize",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Securitize, Inc."
+      }
     },
     {
       "record_id": "1da4d941-7093-4a19-91d5-dad1d2f10d4a",
@@ -286,21 +312,25 @@
       "record_id": "2c147215-ea54-414e-abb7-2d49abfa381d",
       "external_id": "tether-ecosystem",
       "provider_name": "Tether",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Tether Limited"
+      }
     },
     {
       "record_id": "9c8c9122-cb22-481a-b449-3b9bdaa43898",
       "external_id": "token-teknoloji-a-s-ecosystem",
       "provider_name": "Token Teknoloji",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "Token Teknoloji A.S."
+      }
     },
     {
       "record_id": "9a79afe1-c04c-4b61-8de6-173f009427c7",
@@ -316,11 +346,13 @@
       "record_id": "fbc1ddf1-67b6-4c3c-a6f8-66988f630658",
       "external_id": "vnx-commodities-ag-ecosystem",
       "provider_name": "VNX",
-      "action": "",
+      "action": "create_new",
       "evidence_ref": "",
       "target_entity_id": "",
-      "note": "",
-      "canonical_payload_override": null
+      "note": "Suggested legal name — verify and attach an evidence link.",
+      "canonical_payload_override": {
+        "legal_name": "VNX Commodities AG"
+      }
     },
     {
       "record_id": "3ed79e2b-3f10-4d98-bc50-e694822d67de",
