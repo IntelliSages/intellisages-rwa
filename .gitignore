@@ -16,3 +16,4 @@ __pycache__/
 *.py[cod]
 *.db
 backend/data/provider_snapshots/
+backend/.env
