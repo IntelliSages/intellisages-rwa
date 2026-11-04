@@ -219,10 +219,10 @@ The discovery importer above stages identity records for human review. Market sn
 
 Configure `COINGECKO_API_KEY` and `COINGECKO_BASE_URL` only on the backend. Configure a separate random `COINGECKO_REFRESH_ADMIN_TOKEN` for controlled refresh requests. Never put either secret in the Next.js public environment.
 
-Scheduled refresh is provided by `.github/workflows/coingecko-refresh.yml` every five minutes (and can be triggered manually). Configure these GitHub repository Actions secrets:
+Scheduled refresh is provided by `.github/workflows/coingecko-refresh.yml` every five minutes (and can be triggered manually). Configure these GitHub Actions repository settings:
 
-- `RWA_API_BASE_URL`: the backend API base URL, without a trailing slash.
-- `COINGECKO_REFRESH_ADMIN_TOKEN`: the same random server-side refresh token configured on the backend.
+- `COINGECKO_REFRESH_ADMIN_TOKEN` (repository secret): the same random server-side refresh token configured on the backend.
+- `RWA_API_BASE_URL` (repository variable, optional): the backend API base URL without a trailing slash; the workflow defaults to `https://intellisages-rwa-api.onrender.com`.
 
 The workflow sends only an authenticated refresh request; the CoinGecko API key remains exclusively on the backend. GitHub scheduled workflows are best-effort and can be delayed. For a dedicated persistent worker instead, run `python -m app.providers.coingecko_refresh_worker` as one separate background process; do not run it in every API replica. Apply migrations before starting the API/worker:
 
