@@ -10,6 +10,7 @@ from app.imports import router as imports_router
 from app.provider_runs import router as provider_runs_router
 from app.coingecko_market_data_api import router as coingecko_market_data_router
 from app.database import engine
+from app.diagnostics import router as diagnostics_router
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ app.include_router(catalogue_router)
 app.include_router(imports_router)
 app.include_router(provider_runs_router)
 app.include_router(coingecko_market_data_router)
+app.include_router(diagnostics_router)
 
 
 @app.on_event("startup")
