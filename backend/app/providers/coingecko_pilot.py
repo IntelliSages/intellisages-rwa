@@ -741,6 +741,19 @@ class RegistryClient:
     def get_batch(self, batch_id: str) -> dict[str, Any]:
         return self.request("GET", f"/api/v1/registry/imports/{quote(batch_id, safe='')}")
 
+    def review_queue(self, batch_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        query = f"limit={int(limit)}"
+        if batch_id:
+            query += f"&batch_id={quote(batch_id, safe='')}"
+        return self.request("GET", f"/api/v1/registry/imports/queue?{query}")
+
+    def decide_record(self, record_id: str, decision: dict[str, Any]) -> dict[str, Any]:
+        return self.request(
+            "POST",
+            f"/api/v1/registry/imports/records/{quote(record_id, safe='')}/decision",
+            decision,
+        )
+
     def stage_rows(self, rows: list[dict[str, Any]], submitted_by: str,
                    source_version: str,
                    on_batch: Callable[[dict[str, Any], list[dict[str, Any]]], None] | None = None

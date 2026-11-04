@@ -206,6 +206,44 @@ A run is only marked completed when the full provider list was requested, every 
 
 The importer only stages records. It never creates or verifies canonical entities automatically. All canonical records and provider aliases continue through human approval with evidence. A CoinGecko-reported issuer name must not be presented as a verified legal entity without independent evidence.
 
+### Operator review CLI
+
+A small CLI wraps the queue and decision endpoints so reviewers do not hand-write HTTP requests:
+
+```bash
+# List what is awaiting review (optionally filtered or exported for offline review)
+python -m app.providers.coingecko_review queue
+python -m app.providers.coingecko_review queue --entity-type issuer --limit 500
+python -m app.providers.coingecko_review queue --export review-queue.json
+
+# Post a single decision
+python -m app.providers.coingecko_review decide <record-id> \
+  --action create_new --reviewer 'you@example.com' \
+  --evidence-ref 'https://evidence.example/dossier/1' \
+  --override legal-name-override.json
+
+# Bulk-apply decisions from a file (always dry-run first)
+python -m app.providers.coingecko_review apply decisions.json --dry-run
+python -m app.providers.coingecko_review apply decisions.json
+```
+
+It reads `RWA_API_BASE_URL` and `REGISTRY_ADMIN_TOKEN` from the environment (or `--base-url` / `--admin-token`). The same evidence rules are enforced both client- and server-side: `link_existing` requires `evidence_ref` and `target_entity_id`; `create_new` requires `evidence_ref` (issuer `create_new` also requires a `canonical_payload_override.legal_name`); `reject` requires a `note`. No approval is accepted without an evidence reference.
+
+A decisions file is either a bare list or an object with a `reviewer` default and a `decisions` list:
+
+```json
+{
+  "reviewer": "you@example.com",
+  "decisions": [
+    {"record_id": "…", "action": "create_new", "evidence_ref": "https://evidence.example/1",
+     "canonical_payload_override": {"legal_name": "Independent Legal Name"}},
+    {"record_id": "…", "action": "link_existing", "evidence_ref": "https://evidence.example/2",
+     "target_entity_id": "<canonical-id>"},
+    {"record_id": "…", "action": "reject", "note": "Not an RWA / duplicate source"}
+  ]
+}
+```
+
 ## CoinGecko RWA market-data refresh
 
 The discovery importer above stages identity records for human review. Market snapshots use a separate ingestion path and do not create, approve, or relabel canonical entities.
@@ -219,10 +257,10 @@ The discovery importer above stages identity records for human review. Market sn
 
 Configure `COINGECKO_API_KEY` and `COINGECKO_BASE_URL` only on the backend. Configure a separate random `COINGECKO_REFRESH_ADMIN_TOKEN` for controlled refresh requests. Never put either secret in the Next.js public environment.
 
-Scheduled refresh is provided by `.github/workflows/coingecko-refresh.yml` every five minutes (and can be triggered manually). Configure these GitHub repository Actions secrets:
+Scheduled refresh is provided by `.github/workflows/coingecko-refresh.yml` every five minutes (and can be triggered manually). Configure these GitHub Actions repository settings:
 
-- `RWA_API_BASE_URL`: the backend API base URL, without a trailing slash.
-- `COINGECKO_REFRESH_ADMIN_TOKEN`: the same random server-side refresh token configured on the backend.
+- `COINGECKO_REFRESH_ADMIN_TOKEN` (repository secret): the same random server-side refresh token configured on the backend.
+- `RWA_API_BASE_URL` (repository variable, optional): the backend API base URL without a trailing slash; the workflow defaults to `https://intellisages-rwa-api.onrender.com`.
 
 The workflow sends only an authenticated refresh request; the CoinGecko API key remains exclusively on the backend. GitHub scheduled workflows are best-effort and can be delayed. For a dedicated persistent worker instead, run `python -m app.providers.coingecko_refresh_worker` as one separate background process; do not run it in every API replica. Apply migrations before starting the API/worker:
 

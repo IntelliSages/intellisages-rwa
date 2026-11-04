@@ -117,7 +117,7 @@ The Blueprint intentionally does not create a registry admin token or CoinGecko 
 - `COINGECKO_API_KEY`: required on the backend API service for scheduled live RWA market refreshes. Never place it in Vercel or a public frontend variable.
 - `COINGECKO_REFRESH_ADMIN_TOKEN`: a separate random secret used by the controlled refresh endpoint. Configure the same value as a GitHub Actions repository secret; the CoinGecko API key is never sent to GitHub Actions.
 
-The repository workflow `.github/workflows/coingecko-refresh.yml` triggers the backend refresh every five minutes. Configure GitHub Actions repository secrets `RWA_API_BASE_URL` and `COINGECKO_REFRESH_ADMIN_TOKEN`. GitHub scheduled runs are best-effort. The backend persists the raw CoinGecko pages and normalized snapshots.
+The repository workflow `.github/workflows/coingecko-refresh.yml` triggers the backend refresh every five minutes. Configure the GitHub Actions repository secret `COINGECKO_REFRESH_ADMIN_TOKEN` (the same value set on the backend). The target API base URL defaults to `https://intellisages-rwa-api.onrender.com`; optionally override it with a repository variable `RWA_API_BASE_URL`. GitHub scheduled runs are best-effort. The backend persists the raw CoinGecko pages and normalized snapshots.
 
 Import administration remains disabled (HTTP 503) until `REGISTRY_ADMIN_TOKEN` is configured. Do not expose import/review routes through the public frontend.
 
