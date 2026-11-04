@@ -103,6 +103,21 @@ def test_network_mapping_is_explicit_and_unknown_slugs_remain_unresolved(tmp_pat
     assert "unknown-chain" not in DEFAULT_NETWORK_MAP
 
 
+def test_network_rows_keep_source_evidence_compact(tmp_path):
+    client = FakeCoinGecko()
+    manifest = fetch_snapshot(tmp_path, client)
+    details = {"nvidia": __import__("json").loads(next((tmp_path / "details").glob("*.json")).read_text())}
+    rows, _ = build_network_rows(tmp_path, manifest, details)
+    assert rows
+    for row in rows:
+        metadata = row["payload"]["source_metadata"]
+        # The full per-RWA evidence is referenced by hash, not embedded (import rows are size-bounded).
+        assert metadata["source_rwa_count"] >= 1
+        assert "source_rwa_ids" not in metadata
+        assert "source_retrieved_at_by_rwa" not in metadata
+        assert metadata["source_sha256"]
+
+
 def test_products_require_verified_underlying_and_issuer_aliases():
     detail = {"nvidia": {
         "id": "nvidia", "asset_type": "stock",

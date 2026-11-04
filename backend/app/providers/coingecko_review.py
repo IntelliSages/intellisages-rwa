@@ -144,6 +144,27 @@ def build_underlying_bootstrap_decisions(records: list[dict[str, Any]],
     return decisions, deferred
 
 
+def build_network_bootstrap_decisions(records: list[dict[str, Any]],
+                                       reviewer: str) -> list[dict[str, Any]]:
+    """Generate evidence-backed create_new decisions for canonical network identities."""
+    decisions: list[dict[str, Any]] = []
+    for record in records:
+        if record.get("entity_type") != "network":
+            continue
+        payload = record.get("payload") or {}
+        metadata = payload.get("source_metadata") if isinstance(payload, dict) else {}
+        metadata = metadata if isinstance(metadata, dict) else {}
+        slug = record.get("external_id", "unknown")
+        basis = metadata.get("mapping_basis") or "explicit CoinGecko platform-to-CAIP-2 mapping"
+        decisions.append({
+            "record_id": record.get("id"),
+            "action": "create_new",
+            "reviewer": reviewer,
+            "evidence_ref": f"{basis} for platform slug {slug!r}",
+        })
+    return decisions
+
+
 def _canonical_display_name(record: dict[str, Any]) -> str:
     payload = record.get("payload") or {}
     canonical = payload.get("canonical_payload") if isinstance(payload, dict) else {}

@@ -3,6 +3,7 @@ import pytest
 from app.providers.coingecko_review import (
     apply_decisions,
     build_decision_payload,
+    build_network_bootstrap_decisions,
     build_underlying_bootstrap_decisions,
     format_record_summary,
 )
@@ -134,3 +135,17 @@ def test_bootstrap_decisions_approve_underlyings_and_defer_issuers():
     assert decisions[0]["reviewer"] == "r@example.com"
     assert "source_sha256:abc" in decisions[0]["evidence_ref"]
     assert decisions[1]["evidence_ref"].startswith("CoinGecko /rwas/list")
+
+
+def test_bootstrap_network_decisions_use_mapping_evidence():
+    records = [
+        {"id": "n1", "entity_type": "network", "external_id": "ethereum", "payload": {
+            "source_metadata": {"mapping_basis": "explicit CoinGecko platform-to-CAIP-2 mapping"},
+        }},
+        {"id": "u1", "entity_type": "underlying", "payload": {}},
+    ]
+    decisions = build_network_bootstrap_decisions(records, "r@example.com")
+    assert len(decisions) == 1
+    assert decisions[0]["record_id"] == "n1"
+    assert decisions[0]["action"] == "create_new"
+    assert "platform slug 'ethereum'" in decisions[0]["evidence_ref"]
