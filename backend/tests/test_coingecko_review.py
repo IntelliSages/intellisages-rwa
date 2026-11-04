@@ -3,6 +3,8 @@ import pytest
 from app.providers.coingecko_review import (
     apply_decisions,
     build_decision_payload,
+    build_network_bootstrap_decisions,
+    build_underlying_bootstrap_decisions,
     format_record_summary,
 )
 
@@ -112,3 +114,38 @@ def test_format_record_summary_uses_display_name_and_asset_type():
     assert "Gold" in summary
     assert "commodity" in summary
     assert "ext_id=gold" in summary
+
+
+def test_bootstrap_decisions_approve_underlyings_and_defer_issuers():
+    records = [
+        {"id": "u1", "entity_type": "underlying", "payload": {"source_metadata": {
+            "endpoint": "/rwas/gold?tokens=true", "source_sha256": "abc",
+            "retrieved_at": "2026-10-30T00:00:00Z",
+        }}},
+        {"id": "i1", "entity_type": "issuer", "payload": {"source_metadata": {}}},
+        {"id": "u2", "entity_type": "underlying", "payload": {"source_metadata": {
+            "discovery_endpoint": "/rwas/list",
+        }}},
+    ]
+    decisions, deferred = build_underlying_bootstrap_decisions(records, "r@example.com")
+    assert deferred == 1
+    assert len(decisions) == 2
+    assert decisions[0]["record_id"] == "u1"
+    assert decisions[0]["action"] == "create_new"
+    assert decisions[0]["reviewer"] == "r@example.com"
+    assert "source_sha256:abc" in decisions[0]["evidence_ref"]
+    assert decisions[1]["evidence_ref"].startswith("CoinGecko /rwas/list")
+
+
+def test_bootstrap_network_decisions_use_mapping_evidence():
+    records = [
+        {"id": "n1", "entity_type": "network", "external_id": "ethereum", "payload": {
+            "source_metadata": {"mapping_basis": "explicit CoinGecko platform-to-CAIP-2 mapping"},
+        }},
+        {"id": "u1", "entity_type": "underlying", "payload": {}},
+    ]
+    decisions = build_network_bootstrap_decisions(records, "r@example.com")
+    assert len(decisions) == 1
+    assert decisions[0]["record_id"] == "n1"
+    assert decisions[0]["action"] == "create_new"
+    assert "platform slug 'ethereum'" in decisions[0]["evidence_ref"]

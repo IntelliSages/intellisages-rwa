@@ -484,11 +484,7 @@ def build_network_rows(output_dir: Path, manifest: dict[str, Any],
                 "/rwas/{id}?tokens=true&tokenized_market_data=true&tokenized_market_data=true", manifest["retrieved_at"], slug,
                 sha256_bytes(canonical_json(platform_evidence.get(slug, []))),
                 mapping_basis="explicit CoinGecko platform-to-CAIP-2 mapping",
-                source_rwa_ids=sorted({item["rwa_id"] for item in platform_evidence.get(slug, [])}),
-                source_retrieved_at_by_rwa={
-                    rwa_id: manifest.get("detail_retrieved_at", {}).get(rwa_id, manifest["retrieved_at"])
-                    for rwa_id in sorted({item["rwa_id"] for item in platform_evidence.get(slug, [])})
-                },
+                source_rwa_count=len(platform_evidence.get(slug, [])),
             )),
         })
     return rows, {"platform_slugs_discovered": len(slugs), "supported_platform_slugs": len(rows),

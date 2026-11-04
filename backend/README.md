@@ -225,6 +225,11 @@ python -m app.providers.coingecko_review decide <record-id> \
 # Bulk-apply decisions from a file (always dry-run first)
 python -m app.providers.coingecko_review apply decisions.json --dry-run
 python -m app.providers.coingecko_review apply decisions.json
+
+# Generate evidence-backed create_new decisions for provider-reported underlyings.
+# Issuers are never auto-approved and are reported separately for manual review.
+python -m app.providers.coingecko_review bootstrap --reviewer 'you@example.com' \
+  --batch-id <foundations-batch-id> --out underlying-decisions.json
 ```
 
 It reads `RWA_API_BASE_URL` and `REGISTRY_ADMIN_TOKEN` from the environment (or `--base-url` / `--admin-token`). The same evidence rules are enforced both client- and server-side: `link_existing` requires `evidence_ref` and `target_entity_id`; `create_new` requires `evidence_ref` (issuer `create_new` also requires a `canonical_payload_override.legal_name`); `reject` requires a `note`. No approval is accepted without an evidence reference.
@@ -243,6 +248,19 @@ A decisions file is either a bare list or an object with a `reviewer` default an
   ]
 }
 ```
+
+### Phase 2 orchestrator
+
+The one-shot `phase2` command completes the automatable portion of Phase 2 against a running registry API: it approves the staged provider-reported underlyings (create_new with captured source evidence), stages and approves the canonical networks, attempts products, exports the remaining issuers for manual legal-name review, and reconciles coverage:
+
+```bash
+python -m app.providers.coingecko_phase2 \
+  --snapshot-dir data/provider_snapshots/coingecko/full-2026-10-30 \
+  --submitted-by 'operator@your-company' --reviewer 'you@example.com' \
+  --issuer-export issuer-review.json
+```
+
+Issuers are deliberately not auto-approved (a CoinGecko label is not an independently evidenced legal name), so products and deployments stay blocked until the 33 issuer records are reviewed. After that, run the remaining phases and `reconcile` as described in the pilot runbook above.
 
 ## CoinGecko RWA market-data refresh
 

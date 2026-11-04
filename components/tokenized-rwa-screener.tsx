@@ -7,7 +7,7 @@ import {
   Filter, RefreshCw, Search, ShieldCheck, SlidersHorizontal,
 } from "lucide-react";
 import { AvailabilityPill, DataProvenance, MetricUnavailable } from "@/components/data-components";
-import type { TokenizedProductCatalogueResponse, TokenizedProductCatalogueItem } from "@/lib/catalogue-types";
+import type { TokenizedProductCatalogueResponse, TokenizedProductCatalogueItem, VerifiedUnderlyingMarketObservation } from "@/lib/catalogue-types";
 import styles from "./tokenized-rwa-screener.module.css";
 
 const PAGE_SIZE = 25;
@@ -84,6 +84,7 @@ export function TokenizedRwaScreener() {
   const [marketCoverage, setMarketCoverage] = useState<string>("loading");
   const [marketSearch, setMarketSearch] = useState("");
   const [marketRunAt, setMarketRunAt] = useState<string | null>(null);
+  const [underlyingMarket, setUnderlyingMarket] = useState<Record<string, VerifiedUnderlyingMarketObservation>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -154,6 +155,28 @@ export function TokenizedRwaScreener() {
         .catch(() => {
           if (!controller.signal.aborted) setMarketCoverage("unavailable");
         });
+
+      fetch("/api/market-data/coingecko/rwa/verified-underlyings", {
+        signal: controller.signal,
+        headers: { accept: "application/json" },
+      })
+        .then(async response => {
+          const payload = await response.json();
+          if (!response.ok) throw new Error("Verified underlying market data unavailable");
+          return payload as { items?: VerifiedUnderlyingMarketObservation[] };
+        })
+        .then(payload => {
+          if (!controller.signal.aborted) {
+            const byUnderlying: Record<string, VerifiedUnderlyingMarketObservation> = {};
+            for (const item of payload.items ?? []) {
+              if (item && item.underlying_id) byUnderlying[item.underlying_id] = item;
+            }
+            setUnderlyingMarket(byUnderlying);
+          }
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setUnderlyingMarket({});
+        });
     };
     loadMarketData();
     const interval = window.setInterval(loadMarketData, 60_000);
@@ -198,12 +221,12 @@ export function TokenizedRwaScreener() {
     <div className={styles.breadcrumb}><Link href="/">Market Overview</Link><span>/</span><b>Tokenized RWA Screener</b></div>
     <section className={styles.header}>
       <div><p className={styles.eyebrow}>TOKENIZED ASSET DISCOVERY</p><h1>Tokenized RWA Screener</h1><p className={styles.subtitle}>Discover the underlying asset, distinguish issuer products and inspect verified product-level network deployments.</p></div>
-      <span className={styles.readiness}><i/> Registry-backed · market data pending</span>
+      <span className={styles.readiness}><i/> Registry-backed · verified underlying market data</span>
     </section>
 
     <section className={styles.coverageNotice}>
       <span className={styles.noticeIcon}><ShieldCheck size={18}/></span>
-      <div><b>Identity and market-data coverage are separate</b><p>The catalogue returns currently classified registry records. It does not represent a provider-complete market universe. Price, value, volume, liquidity and performance remain unavailable until validated observations are connected.</p></div>
+      <div><b>Identity and market-data coverage are separate</b><p>The catalogue returns currently classified registry records. It does not represent a provider-complete market universe. Aggregated underlying price, 24-hour volume and 24-hour/7-day change are shown only where a verified CoinGecko alias connects them to a canonical underlying; they are not issuer-product metrics. Tokenized value, liquidity, 30-day change and performance remain unavailable until further validated observations exist.</p></div>
       <AvailabilityPill status="partial" reason="Registry coverage is known only for registered identities; provider universe completeness is unknown."/>
     </section>
 
@@ -253,6 +276,7 @@ export function TokenizedRwaScreener() {
           <tbody>{data.items.map(product=><FragmentRow
             key={product.id}
             product={product}
+            market={underlyingMarket[product.underlying.id]}
             expanded={expandedId===product.id}
             onToggle={()=>setExpandedId(current=>current===product.id?null:product.id)}
           />)}</tbody>
@@ -275,19 +299,32 @@ export function TokenizedRwaScreener() {
   </div>;
 }
 
-function FragmentRow({product,expanded,onToggle}:{product:TokenizedProductCatalogueItem;expanded:boolean;onToggle:()=>void}) {
+function MarketValue({ value, kind, scope, freshness }: {
+  value: number;
+  kind: "usd" | "pct";
+  scope: string;
+  freshness?: string | null;
+}) {
+  const formatted = kind === "usd"
+    ? `$${value.toLocaleString(undefined, { maximumFractionDigits: 4 })}`
+    : `${value.toFixed(2)}%`;
+  const color = kind === "pct" ? (value >= 0 ? "#27845c" : "#b45353") : "#536075";
+  return <span style={{ color, whiteSpace: "nowrap" }} title={`${scope} · ${freshness === "stale" ? "Stale" : "Available"}`}>{formatted}</span>;
+}
+
+function FragmentRow({product,market,expanded,onToggle}:{product:TokenizedProductCatalogueItem;market?:VerifiedUnderlyingMarketObservation;expanded:boolean;onToggle:()=>void}) {
   const verified = product.deployments.filter(deployment=>deployment.is_verified);
   return <>
     <tr className={styles.productRow}>
       <td className={styles.identityCell}><button type="button" className={styles.expand} aria-expanded={expanded} aria-label={`${expanded?"Collapse":"Expand"} ${product.display_name} details`} onClick={onToggle}>{expanded?<ChevronDown size={15}/>:<ChevronRight size={15}/>}</button><span><b>{product.underlying.display_name}</b><small><Link href={`/tokenized-rwa-screener/${product.id}`} style={{color:"inherit",textDecoration:"underline",textDecorationColor:"#cbd5e1"}}>{product.display_name}</Link>{product.symbol? ` · ${product.symbol}`:""} · {product.issuer.legal_name}</small><code>{product.id}</code></span></td>
       <td><span className={styles.assetClass}>{product.underlying.asset_type.replaceAll("_", " ")}</span></td>
       <td><div className={styles.networkChips}>{verified.length?verified.map(deployment=><span key={deployment.id}>{deployment.network.display_name}</span>):<small>No verified deployment</small>}</div>{product.unverified_deployment_count>0&&<small className={styles.pendingCount}>{product.unverified_deployment_count} pending</small>}</td>
-      <td><MetricUnavailable label="Tokenized price" reason="No validated tokenized price observation is connected to this product." /></td>
+      <td>{market?.current_price_usd != null ? <MarketValue value={market.current_price_usd} kind="usd" scope="Aggregated CoinGecko underlying market price; not an issuer-product tokenized price." freshness={market.freshness}/> : <MetricUnavailable label="Tokenized price" reason="No validated tokenized price observation is connected to this product." />}</td>
       <td><MetricUnavailable label="Tokenized value" reason="Supply, unit conversion and non-overlapping economic-supply methodology are not yet connected." /></td>
-      <td><MetricUnavailable label="24 hour volume" reason="No validated venue-scoped trading volume observation is connected." /></td>
+      <td>{market?.total_volume_24h_usd != null ? <MarketValue value={market.total_volume_24h_usd} kind="usd" scope="Aggregated CoinGecko underlying 24-hour volume; not issuer-product venue-scoped volume." freshness={market.freshness}/> : <MetricUnavailable label="24 hour volume" reason="No validated venue-scoped trading volume observation is connected." />}</td>
       <td><MetricUnavailable label="Liquidity" reason="No comparable pool or venue liquidity observation is connected." /></td>
-      <td><MetricUnavailable label="24 hour change" reason="No completed, timestamp-aligned price history is connected." /></td>
-      <td><MetricUnavailable label="7 day change" reason="No completed, timestamp-aligned price history is connected." /></td>
+      <td>{market?.price_change_24h_pct != null ? <MarketValue value={market.price_change_24h_pct} kind="pct" scope="Aggregated CoinGecko underlying 24-hour change." freshness={market.freshness}/> : <MetricUnavailable label="24 hour change" reason="No completed, timestamp-aligned price history is connected." />}</td>
+      <td>{market?.price_change_7d_pct != null ? <MarketValue value={market.price_change_7d_pct} kind="pct" scope="Aggregated CoinGecko underlying 7-day change." freshness={market.freshness}/> : <MetricUnavailable label="7 day change" reason="No completed, timestamp-aligned price history is connected." />}</td>
       <td><MetricUnavailable label="30 day change" reason="No completed, timestamp-aligned price history is connected." /></td>
       <td><MetricUnavailable label="Versions" reason="This is a product count, not a deployment count; complete version reconciliation is pending." /></td>
       <td><AvailabilityPill status="unavailable" reason="Perpetual market catalogue and exact product-market mappings are not connected." /></td>
