@@ -39,3 +39,28 @@ export interface TokenizedProductCatalogueResponse {
   facets: { issuers: CatalogueFacet[]; networks: CatalogueFacet[] };
   coverage: { status: "unknown"; scope: string; note: string };
 }
+
+export interface VerifiedUnderlyingMarketObservation {
+  underlying_id: string;
+  provider_rwa_id: string;
+  name: string;
+  symbol: string;
+  asset_type: string | null;
+  current_price_usd: number | null;
+  market_cap_usd: number | null;
+  total_volume_24h_usd: number | null;
+  price_change_24h_pct: number | null;
+  price_change_7d_pct: number | null;
+  provider_updated_at: string | null;
+  retrieved_at: string;
+  freshness: "available" | "stale";
+  source: string;
+  scope: string;
+}
+
+export interface VerifiedUnderlyingMarketResponse {
+  status: string;
+  run_id?: string;
+  coverage?: unknown;
+  items: VerifiedUnderlyingMarketObservation[];
+}

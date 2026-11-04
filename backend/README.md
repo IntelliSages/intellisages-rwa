@@ -225,6 +225,11 @@ python -m app.providers.coingecko_review decide <record-id> \
 # Bulk-apply decisions from a file (always dry-run first)
 python -m app.providers.coingecko_review apply decisions.json --dry-run
 python -m app.providers.coingecko_review apply decisions.json
+
+# Generate evidence-backed create_new decisions for provider-reported underlyings.
+# Issuers are never auto-approved and are reported separately for manual review.
+python -m app.providers.coingecko_review bootstrap --reviewer 'you@example.com' \
+  --batch-id <foundations-batch-id> --out underlying-decisions.json
 ```
 
 It reads `RWA_API_BASE_URL` and `REGISTRY_ADMIN_TOKEN` from the environment (or `--base-url` / `--admin-token`). The same evidence rules are enforced both client- and server-side: `link_existing` requires `evidence_ref` and `target_entity_id`; `create_new` requires `evidence_ref` (issuer `create_new` also requires a `canonical_payload_override.legal_name`); `reject` requires a `note`. No approval is accepted without an evidence reference.

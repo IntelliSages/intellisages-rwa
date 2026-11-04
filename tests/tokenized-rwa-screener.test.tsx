@@ -166,6 +166,53 @@ describe("Tokenized RWA screener", () => {
     expect(observationSummary).toBeInTheDocument();
   });
 
+  it("shows verified aggregate-underlying market metrics in product rows", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("verified-underlyings")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "complete",
+            run_id: "run-1",
+            coverage: { complete: true },
+            items: [{
+              underlying_id: "underlying-nvidia",
+              provider_rwa_id: "nvidia",
+              name: "NVIDIA",
+              symbol: "nvda",
+              asset_type: "equity",
+              current_price_usd: 190,
+              market_cap_usd: 1000000,
+              total_volume_24h_usd: 2000,
+              price_change_24h_pct: 1.25,
+              price_change_7d_pct: 2.5,
+              provider_updated_at: "2026-10-30T22:29:00",
+              retrieved_at: "2026-10-30T22:30:00",
+              freshness: "available",
+              source: "CoinGecko RWA Markets API",
+              scope: "aggregate tokenized underlying market",
+            }],
+          }),
+        });
+      }
+      if (url.startsWith("/api/market-data/coingecko/rwa")) {
+        return Promise.resolve({ ok: true, json: async () => ({ status: "unavailable", items: [] }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => catalogue() });
+    }));
+
+    render(<TokenizedRwaScreener />);
+
+    expect(await screen.findByText("NVIDIA")).toBeInTheDocument();
+    expect(await screen.findByText("$190")).toBeInTheDocument();
+    expect(screen.getByText("$2,000")).toBeInTheDocument();
+    expect(screen.getByText("1.25%")).toBeInTheDocument();
+    expect(screen.getByText("2.50%")).toBeInTheDocument();
+    // Tokenized value remains unavailable because no supply/unit methodology exists.
+    expect(screen.getByLabelText(/Tokenized value: unavailable/)).toBeInTheDocument();
+  });
+
   it("shows an explicit configuration state when the API proxy is not configured", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: false,

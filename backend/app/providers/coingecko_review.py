@@ -107,6 +107,43 @@ def apply_decisions(api: RegistryClient | None, decisions: list[dict[str, Any]],
     return results
 
 
+def build_underlying_bootstrap_decisions(records: list[dict[str, Any]],
+                                         reviewer: str) -> tuple[list[dict[str, Any]], int]:
+    """Generate evidence-backed create_new decisions for provider-reported underlyings.
+
+    Returns ``(decisions, deferred_issuer_count)``. Issuers are never auto-approved:
+    their CoinGecko label is not an independently evidenced legal name, so they are
+    counted as deferred and left for manual review.
+    """
+    decisions: list[dict[str, Any]] = []
+    deferred = 0
+    for record in records:
+        entity_type = record.get("entity_type")
+        if entity_type == "issuer":
+            deferred += 1
+            continue
+        if entity_type != "underlying":
+            continue
+        payload = record.get("payload") or {}
+        metadata = payload.get("source_metadata") if isinstance(payload, dict) else {}
+        metadata = metadata if isinstance(metadata, dict) else {}
+        endpoint = metadata.get("endpoint") or metadata.get("discovery_endpoint") or "CoinGecko RWA discovery"
+        evidence = f"CoinGecko {endpoint}"
+        sha = metadata.get("source_sha256")
+        retrieved = metadata.get("retrieved_at")
+        if sha:
+            evidence += f" (source_sha256:{sha})"
+        if retrieved:
+            evidence += f" retrieved {retrieved}"
+        decisions.append({
+            "record_id": record.get("id"),
+            "action": "create_new",
+            "reviewer": reviewer,
+            "evidence_ref": evidence,
+        })
+    return decisions, deferred
+
+
 def _canonical_display_name(record: dict[str, Any]) -> str:
     payload = record.get("payload") or {}
     canonical = payload.get("canonical_payload") if isinstance(payload, dict) else {}
@@ -181,6 +218,16 @@ def main(argv: list[str] | None = None) -> int:
     apply_parser.add_argument("--dry-run", action="store_true",
                               help="Validate and print decisions without posting them.")
 
+    bootstrap_parser = commands.add_parser(
+        "bootstrap",
+        help="Generate evidence-backed create_new decisions for provider-reported underlyings.",
+    )
+    bootstrap_parser.add_argument("--reviewer", required=True)
+    bootstrap_parser.add_argument("--batch-id", default=None)
+    bootstrap_parser.add_argument("--limit", type=int, default=500)
+    bootstrap_parser.add_argument("--out", type=Path, default=None,
+                                  help="Write decisions to a JSON file (default stdout).")
+
     args = parser.parse_args(argv)
     try:
         if args.command == "queue":
@@ -210,6 +257,21 @@ def main(argv: list[str] | None = None) -> int:
             api = build_client(args)
             result = api.decide_record(args.record_id, build_decision_payload(decision))
             print(json.dumps(result, indent=2))
+            return 0
+
+        if args.command == "bootstrap":
+            api = build_client(args)
+            records = api.review_queue(batch_id=args.batch_id, limit=args.limit)
+            decisions, deferred = build_underlying_bootstrap_decisions(records, args.reviewer)
+            document = {"reviewer": args.reviewer, "decisions": decisions}
+            if args.out:
+                args.out.write_text(json.dumps(document, indent=2), encoding="utf-8")
+                print(f"Wrote {len(decisions)} underlying decision(s) to {args.out}")
+            else:
+                print(json.dumps(document, indent=2))
+            if deferred:
+                print(f"\n{deferred} issuer record(s) are not auto-approved and require "
+                      f"independent legal-name evidence.", file=sys.stderr)
             return 0
 
         document = _load_json_file(args.file)
