@@ -1,19 +1,49 @@
+# Node and Next.js
 node_modules/
 .next/
 out/
 dist/
 coverage/
-*.log
+*.tsbuildinfo
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environment and secrets
 .env
 .env.*
 !.env.example
-.DS_Store
-*.tsbuildinfo
-.venv/
-__pycache__/
-.pytest_cache/
-.ruff_cache/
-*.py[cod]
-*.db
-backend/data/provider_snapshots/
 backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Local databases (SQLite and its side files)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+
+# Provider snapshots and review exports
+backend/data/provider_snapshots/
+backend/data/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+# Local review working files
+backend/issuer-queue.json
+backend/issuer-remaining.json
+backend/issuer-decisions*.json
+backend/underlying-decisions.json
+backend/products-queue.json
+backend/products-decisions-ready.json
