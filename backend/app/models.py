@@ -207,7 +207,7 @@ class RegistryImportCandidate(Base):
     import_record_id: Mapped[str] = mapped_column(ForeignKey("registry_import_records.id", ondelete="CASCADE"), index=True)
     candidate_entity_type: Mapped[str] = mapped_column(String(40))
     candidate_entity_id: Mapped[str] = mapped_column(String(36))
-    match_basis: Mapped[str] = mapped_column(String(80))
+    match_basis: Mapped[str] = mapped_column(String(255))
     confidence: Mapped[float] = mapped_column(Float)
     evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
