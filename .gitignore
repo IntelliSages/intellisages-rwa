@@ -47,3 +47,6 @@ backend/issuer-decisions*.json
 backend/underlying-decisions.json
 backend/products-queue.json
 backend/products-decisions-ready.json
+backend/*-queue.json
+backend/*-ready.json
+backend/issuer-remaining*.json
