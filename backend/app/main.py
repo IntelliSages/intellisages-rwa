@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.registry import router as registry_router
 from app.catalogue import router as catalogue_router
 from app.imports import router as imports_router
+from app.deployment_verification import router as deployment_verification_router
 from app.provider_runs import router as provider_runs_router
 from app.coingecko_market_data_api import router as coingecko_market_data_router
 from app.database import engine
@@ -22,6 +23,7 @@ app = FastAPI(
 app.include_router(registry_router)
 app.include_router(catalogue_router)
 app.include_router(imports_router)
+app.include_router(deployment_verification_router)
 app.include_router(provider_runs_router)
 app.include_router(coingecko_market_data_router)
 app.include_router(diagnostics_router)

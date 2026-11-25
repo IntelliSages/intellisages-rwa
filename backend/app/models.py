@@ -63,6 +63,16 @@ class Deployment(Base):
     issuer_product: Mapped[IssuerProduct] = relationship()
     network: Mapped[Network] = relationship()
 
+class DeploymentVerificationEvent(Base):
+    """Append-only record of every verification or revocation of a deployment."""
+    __tablename__ = "deployment_verification_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    deployment_id: Mapped[str] = mapped_column(ForeignKey("deployments.id"), index=True)
+    verified: Mapped[bool] = mapped_column(Boolean)
+    evidence_ref: Mapped[str] = mapped_column(String(500))
+    verified_by: Mapped[str] = mapped_column(String(160))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
 class Venue(Base):
     __tablename__ = "venues"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
