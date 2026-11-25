@@ -28,6 +28,10 @@ def _freshness(observed_at: datetime | None, retrieved_at: datetime) -> str:
 
 
 def _read_observation(row: models.CoinGeckoRwaMarketObservation) -> dict:
+    has_data = any(
+        value is not None
+        for value in (row.current_price_usd, row.market_cap_usd, row.total_volume_24h_usd)
+    )
     return {
         "provider_rwa_id": row.provider_rwa_id,
         "name": row.name,
@@ -40,7 +44,10 @@ def _read_observation(row: models.CoinGeckoRwaMarketObservation) -> dict:
         "price_change_7d_pct": row.price_change_7d_pct,
         "provider_updated_at": row.provider_updated_at.isoformat() if row.provider_updated_at else None,
         "retrieved_at": row.retrieved_at.isoformat(),
-        "freshness": _freshness(row.provider_updated_at, row.retrieved_at),
+        "has_tokenized_market_data": has_data,
+        "freshness": (
+            _freshness(row.provider_updated_at, row.retrieved_at) if has_data else "unavailable"
+        ),
         "source": "CoinGecko RWA Markets API",
         "scope": "aggregated tokenized underlying market; not issuer-product or underlying spot-market data",
     }

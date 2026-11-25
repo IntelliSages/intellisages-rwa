@@ -52,6 +52,14 @@ def _timestamp(value: Any) -> datetime | None:
     return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
 
 
+def has_tokenized_market_values(normalized: dict[str, Any]) -> bool:
+    """True when CoinGecko supplied at least one tokenized market value."""
+    return any(
+        normalized[key] is not None
+        for key in ("current_price_usd", "market_cap_usd", "total_volume_24h_usd")
+    )
+
+
 def normalize_market_row(row: dict[str, Any], retrieved_at: datetime) -> dict[str, Any]:
     market = row.get("tokenized_market_data")
     market = market if isinstance(market, dict) else {}
@@ -104,6 +112,7 @@ def refresh_coingecko_rwa_market_data(
 
     expected_ids: set[str] = set()
     received_ids: set[str] = set()
+    no_market_data_ids: set[str] = set()
     duplicate_ids: set[str] = set()
     pages = 0
     errors: list[str] = []
@@ -140,6 +149,7 @@ def refresh_coingecko_rwa_market_data(
                     "page": str(page),
                     "per_page": str(page_size),
                     "price_change_percentage": "24h,7d",
+                    "include_non_tokenized": "true",
                 },
             )
             rows = _rows(payload, MARKETS_PATH)
@@ -168,6 +178,8 @@ def refresh_coingecko_rwa_market_data(
                     continue
                 received_ids.add(provider_id)
                 normalized = normalize_market_row(row, retrieved)
+                if not has_tokenized_market_values(normalized):
+                    no_market_data_ids.add(provider_id)
                 db.add(models.CoinGeckoRwaMarketObservation(
                     run_id=run.id,
                     raw_response_id=raw.id,
@@ -185,6 +197,10 @@ def refresh_coingecko_rwa_market_data(
             "received_rwa_count": len(received_ids),
             "missing_rwa_count": len(missing),
             "missing_rwa_ids_sample": missing[:50],
+            "include_non_tokenized": True,
+            "tokenized_rwa_count": len(received_ids) - len(no_market_data_ids),
+            "no_tokenized_market_data_count": len(no_market_data_ids),
+            "no_tokenized_market_data_ids_sample": sorted(no_market_data_ids)[:50],
             "duplicate_rwa_count": len(duplicate_ids),
             "pages_requested": pages,
             "scope": "CoinGecko-tracked RWA universe at retrieval time",

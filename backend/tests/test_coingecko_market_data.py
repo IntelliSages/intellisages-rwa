@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+from app.coingecko_market_data_api import _read_observation
 from app.models import Base, CoinGeckoRwaMarketObservation, ProviderRawResponse, ProviderRefreshRun
 from app.providers.coingecko_market_data import normalize_market_row, refresh_coingecko_rwa_market_data
 
@@ -87,3 +88,55 @@ def test_refresh_marks_missing_market_rows_as_partial():
         assert result["coverage"]["missing_rwa_count"] == 1
         assert result["coverage"]["complete"] is False
     Base.metadata.drop_all(engine)
+
+
+NON_TOKENIZED_CALLS = []
+
+
+class NonTokenizedClient:
+    def get_json(self, path, params=None):
+        if path == "rwas/list":
+            return [{"id": "gold"}, {"id": "alibaba-group"}]
+        NON_TOKENIZED_CALLS.append(dict(params))
+        return [
+            {"id": "gold", "name": "Gold", "symbol": "xau", "asset_type": "commodity",
+             "tokenized_market_data": {"current_price": 2300, "market_cap": 1000}},
+            {"id": "alibaba-group", "name": "Alibaba Group", "symbol": "9988.hk",
+             "asset_type": "stock",
+             "tokenized_market_data": {"current_price": None, "market_cap": None,
+                                       "total_volume": None, "last_updated": None}},
+        ]
+
+
+def test_refresh_requests_non_tokenized_rwas_and_reports_them_separately():
+    NON_TOKENIZED_CALLS.clear()
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    with Session(engine) as db:
+        result = refresh_coingecko_rwa_market_data(
+            db, client=NonTokenizedClient(), page_size=2
+        )
+        coverage = result["coverage"]
+        assert NON_TOKENIZED_CALLS[0]["include_non_tokenized"] == "true"
+        assert result["status"] == "complete"
+        assert coverage["missing_rwa_count"] == 0
+        assert coverage["tokenized_rwa_count"] == 1
+        assert coverage["no_tokenized_market_data_count"] == 1
+        assert coverage["no_tokenized_market_data_ids_sample"] == ["alibaba-group"]
+        stored = {r.provider_rwa_id: r for r in db.scalars(select(CoinGeckoRwaMarketObservation))}
+        assert stored["alibaba-group"].current_price_usd is None
+    Base.metadata.drop_all(engine)
+
+
+def test_observation_without_values_is_marked_unavailable_not_fresh():
+    now = datetime.now(timezone.utc)
+    empty = CoinGeckoRwaMarketObservation(
+        provider_rwa_id="alibaba-group", name="Alibaba Group", symbol="9988.hk",
+        asset_type="stock", provider_updated_at=None, retrieved_at=now)
+    priced = CoinGeckoRwaMarketObservation(
+        provider_rwa_id="gold", name="Gold", symbol="xau", asset_type="commodity",
+        current_price_usd=2300.0, provider_updated_at=now, retrieved_at=now)
+    assert _read_observation(empty)["has_tokenized_market_data"] is False
+    assert _read_observation(empty)["freshness"] == "unavailable"
+    assert _read_observation(priced)["has_tokenized_market_data"] is True
+    assert _read_observation(priced)["freshness"] == "available"
