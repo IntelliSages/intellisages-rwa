@@ -166,7 +166,7 @@ describe("Tokenized RWA screener", () => {
     expect(observationSummary).toBeInTheDocument();
   });
 
-  it("shows verified aggregate-underlying market metrics in product rows", async () => {
+  it("does not copy underlying aggregate market metrics onto issuer product rows", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("verified-underlyings")) {
@@ -205,11 +205,12 @@ describe("Tokenized RWA screener", () => {
     render(<TokenizedRwaScreener />);
 
     expect(await screen.findByText("NVIDIA")).toBeInTheDocument();
-    expect(await screen.findByText("$190")).toBeInTheDocument();
-    expect(screen.getByText("$2,000")).toBeInTheDocument();
-    expect(screen.getByText("1.25%")).toBeInTheDocument();
-    expect(screen.getByText("2.50%")).toBeInTheDocument();
-    // Tokenized value remains unavailable because no supply/unit methodology exists.
+    // Underlying aggregates must not appear as issuer-product metrics.
+    expect(screen.queryByText("$190")).not.toBeInTheDocument();
+    expect(screen.queryByText("$2,000")).not.toBeInTheDocument();
+    expect(screen.queryByText("1.25%")).not.toBeInTheDocument();
+    expect(screen.queryByText("2.50%")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Tokenized price: unavailable/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Tokenized value: unavailable/)).toBeInTheDocument();
   });
 

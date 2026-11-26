@@ -38,7 +38,7 @@ export function TokenizedRwaProductDetail({ productId }: { productId: string }) 
   return <main style={{maxWidth:1120,margin:"0 auto",padding:"32px 24px 64px",color:"#182230"}}>
     <nav aria-label="Breadcrumb" style={{fontSize:13,color:"#64748b",marginBottom:24}}>
       <Link href="/" style={{color:"inherit"}}>Market Overview</Link> <span>/</span>{" "}
-      <Link href="/tokenized-rwa-screener" style={{color:"inherit"}}>Tokenized RWA Screener</Link> <span>/</span> Product
+      <Link href="/tokenized-rwa-screener" style={{color:"inherit"}}>Tokenized RWA Screener</Link> <span>/</span> {product?.display_name ?? "Product"}
     </nav>
     {loading ? <section aria-live="polite"><h1>Loading product identity…</h1><p>Resolving the exact canonical issuer-product record.</p></section>
       : error ? <section role="alert" style={{border:"1px solid #e2e8f0",borderRadius:12,padding:24}}>
